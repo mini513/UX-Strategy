@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SUS 분석기 — UX Strategy Toolkit</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <style>
+    .score-gauge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      padding: 32px 0;
+    }
+    .score-gauge .score-number {
+      font-size: 64px;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .score-gauge .score-label {
+      font-size: 15px;
+      color: var(--text-secondary);
+      margin-top: 8px;
+    }
+    .grade-bar {
+      display: flex;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      font-size: 12px;
+      font-weight: 600;
+      color: white;
+    }
+    .grade-bar > div {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .grade-bar .bar-f { background: #EF4444; flex: 25; }
+    .grade-bar .bar-d { background: #F97316; flex: 25.9; }
+    .grade-bar .bar-c { background: #F59E0B; flex: 16.9; }
+    .grade-bar .bar-b { background: #10B981; flex: 12.3; }
+    .grade-bar .bar-a { background: #4F46E5; flex: 19.7; }
+    .grade-marker {
+      position: absolute;
+      top: -8px;
+      width: 3px;
+      height: 48px;
+      background: var(--text);
+      border-radius: 2px;
+      z-index: 2;
+    }
+    .grade-marker::after {
+      content: attr(data-score);
+      position: absolute;
+      top: -22px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .sus-table-wrap {
+      overflow-x: auto;
+      max-width: 100%;
+    }
+    .sus-table input[type="number"] {
+      width: 52px;
+      padding: 4px 6px;
+      text-align: center;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+      font-size: 14px;
+      font-family: var(--font);
+    }
+    .sus-table input[type="number"]:focus {
+      outline: none;
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+    }
+    .sus-table input.invalid {
+      border-color: var(--danger);
+      background: var(--danger-light);
+    }
+    .sus-table th.q-col {
+      min-width: 52px;
+      text-align: center;
+    }
+    .sus-table td { text-align: center; padding: 6px 8px; }
+    .sus-table td:first-child { text-align: left; font-weight: 500; font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
+    .collapsible-toggle {
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .collapsible-toggle .arrow {
+      transition: transform 0.2s;
+      font-size: 12px;
+    }
+    .collapsible-toggle.open .arrow {
+      transform: rotate(90deg);
+    }
+    .collapsible-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+    .collapsible-content.open {
+      max-height: 1000px;
+    }
+    .interpretation-box {
+      background: var(--bg);
+      border-left: 4px solid var(--primary);
+      padding: 16px 20px;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .history-item:last-child { border-bottom: none; }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="../../index.html" class="back-link">← 돌아가기</a>
+    <h1>SUS 분석기</h1>
+  </nav>
+
+  <main class="container">
+    <!-- Guide -->
+    <div class="card fade-in">
+      <div class="card-header collapsible-toggle open" onclick="toggleCollapsible(this)">
+        <span class="arrow">▶</span>
+        SUS(System Usability Scale) 가이드
+      </div>
+      <div class="collapsible-content open" id="guideContent">
+        <div class="card-body">
+          <div class="guide-box">
+            <strong>SUS란?</strong>
+            <p class="mt-4">SUS(System Usability Scale)는 1986년 John Brooke가 개발한 표준화된 사용성 측정 도구입니다. 10개 문항에 대해 1~5점 리커트 척도로 응답하여 0~100점 사이의 단일 점수를 산출합니다.</p>
+            <ul class="mt-8">
+              <li><strong>사용 시점:</strong> 사용성 테스트 후, 프로토타입/제품 평가 시, 개선 전후 비교 시</li>
+              <li><strong>응답자 수:</strong> 최소 5명 이상, 8~12명 권장</li>
+              <li><strong>산업 평균:</strong> 68점 (이 점수 이상이면 평균 이상의 사용성)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input Section -->
+    <div class="card fade-in">
+      <div class="card-header">데이터 입력</div>
+      <div class="card-body">
+        <div class="grid grid-2">
+          <div class="form-group">
+            <label class="form-label">프로젝트 / 테스트명</label>
+            <input type="text" class="input" id="projectLabel" placeholder="예: KAP 2.3 사용성 평가">
+          </div>
+          <div class="form-group">
+            <label class="form-label">응답자 수</label>
+            <div class="input-group">
+              <input type="number" class="input" id="respondentCount" min="1" max="30" value="5">
+              <button class="btn btn-secondary btn-sm" onclick="generateTable()">테이블 생성</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Questions Reference -->
+        <div class="mt-16">
+          <div class="collapsible-toggle" onclick="toggleCollapsible(this)" style="font-size:13px; color:var(--text-secondary); font-weight:500;">
+            <span class="arrow">▶</span>
+            SUS 10개 문항 보기
+          </div>
+          <div class="collapsible-content" id="questionsRef">
+            <div class="guide-box mt-8" style="font-size:13px;">
+              <ol style="padding-left:20px; line-height:2;">
+                <li><span class="badge badge-primary" style="font-size:11px;">긍정</span> 이 시스템을 자주 사용하고 싶다</li>
+                <li><span class="badge badge-danger" style="font-size:11px;">부정</span> 이 시스템이 불필요하게 복잡하다고 느꼈다</li>
+                <li><span class="badge badge-primary" style="font-size:11px;">긍정</span> 이 시스템이 사용하기 쉽다고 생각했다</li>
+                <li><span class="badge badge-danger" style="font-size:11px;">부정</span> 이 시스템을 사용하려면 전문가의 도움이 필요할 것 같다</li>
+                <li><span class="badge badge-primary" style="font-size:11px;">긍정</span> 이 시스템의 다양한 기능이 잘 통합되어 있다고 느꼈다</li>
+                <li><span class="badge badge-danger" style="font-size:11px;">부정</span> 이 시스템에 일관성이 없는 부분이 너무 많다고 느꼈다</li>
+                <li><span class="badge badge-primary" style="font-size:11px;">긍정</span> 대부분의 사람들이 이 시스템 사용법을 빨리 배울 수 있을 것이다</li>
+                <li><span class="badge badge-danger" style="font-size:11px;">부정</span> 이 시스템을 사용하는 것이 매우 번거롭다고 느꼈다</li>
+                <li><span class="badge badge-primary" style="font-size:11px;">긍정</span> 이 시스템을 사용하는 데 자신감을 느꼈다</li>
+                <li><span class="badge badge-danger" style="font-size:11px;">부정</span> 이 시스템을 사용하기 전에 많은 것을 배워야 했다</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+
+        <!-- Data Table -->
+        <div id="tableArea" class="mt-16"></div>
+      </div>
+      <div class="card-footer" id="calcFooter" style="display:none;">
+        <button class="btn btn-secondary" onclick="fillSample()">샘플 데이터 채우기</button>
+        <button class="btn btn-primary" onclick="calculate()">분석하기</button>
+      </div>
+    </div>
+
+    <!-- Analysis Section -->
+    <div id="analysisSection" class="hidden">
+      <!-- Score Overview -->
+      <div class="grid grid-3 fade-in">
+        <div class="card">
+          <div class="score-gauge">
+            <div class="score-number" id="susScore">—</div>
+            <div class="score-label">SUS 점수</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="score-gauge">
+            <div class="score-number" id="susGrade" style="font-size:56px;">—</div>
+            <div class="score-label">등급</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="score-gauge">
+            <div id="susAdjectiveBadge" style="font-size:20px; font-weight:600;">—</div>
+            <div class="score-label mt-8">평가</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grade Scale -->
+      <div class="card fade-in">
+        <div class="card-header">등급 스케일</div>
+        <div class="card-body">
+          <div class="grade-bar" id="gradeBar">
+            <div class="bar-f">F (0-25)</div>
+            <div class="bar-d">D (25.1-51)</div>
+            <div class="bar-c">C (51-68)</div>
+            <div class="bar-b">B (68-80.3)</div>
+            <div class="bar-a">A (80.3-100)</div>
+          </div>
+          <div class="flex-between mt-12 text-sm text-secondary">
+            <span>Awful</span>
+            <span>Poor</span>
+            <span>OK</span>
+            <span>Good</span>
+            <span>Excellent</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Per-question Chart -->
+      <div class="card fade-in">
+        <div class="card-header">문항별 평균 점수</div>
+        <div class="card-body">
+          <div class="chart-container" style="max-height:500px;">
+            <canvas id="questionChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interpretation -->
+      <div class="card fade-in">
+        <div class="card-header">해석</div>
+        <div class="card-body">
+          <div class="interpretation-box" id="interpretationText"></div>
+        </div>
+        <div class="card-footer">
+          <button class="btn" onclick="exportCSV()">CSV 내보내기</button>
+          <button class="btn btn-primary" onclick="saveToHistory()">이력에 저장</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- History Section -->
+    <div class="card fade-in">
+      <div class="card-header flex-between">
+        측정 이력
+        <button class="btn btn-danger btn-sm" onclick="clearHistory()" id="clearHistoryBtn" style="display:none;">전체 삭제</button>
+      </div>
+      <div class="card-body" id="historyArea">
+        <div class="empty-state">
+          <div class="empty-state-icon">📊</div>
+          <div class="empty-state-text">저장된 측정 이력이 없습니다</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../../shared/storage.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script>
+    const SUS_QUESTIONS = [
+      '이 시스템을 자주 사용하고 싶다',
+      '이 시스템이 불필요하게 복잡하다고 느꼈다',
+      '이 시스템이 사용하기 쉽다고 생각했다',
+      '이 시스템을 사용하려면 전문가의 도움이 필요할 것 같다',
+      '이 시스템의 다양한 기능이 잘 통합되어 있다고 느꼈다',
+      '이 시스템에 일관성이 없는 부분이 너무 많다고 느꼈다',
+      '대부분의 사람들이 이 시스템 사용법을 빨리 배울 수 있을 것이다',
+      '이 시스템을 사용하는 것이 매우 번거롭다고 느꼈다',
+      '이 시스템을 사용하는 데 자신감을 느꼈다',
+      '이 시스템을 사용하기 전에 많은 것을 배워야 했다',
+    ];
+
+    let currentChart = null;
+    let lastResult = null;
+
+    // ── Collapsible ──
+    function toggleCollapsible(el) {
+      el.classList.toggle('open');
+      const content = el.nextElementSibling;
+      if (content) content.classList.toggle('open');
+    }
+
+    // ── Generate Table ──
+    function generateTable() {
+      const count = Math.min(30, Math.max(1, parseInt(document.getElementById('respondentCount').value) || 5));
+      document.getElementById('respondentCount').value = count;
+
+      let html = '<div class="sus-table-wrap"><table class="sus-table">';
+      html += '<thead><tr><th>응답자</th>';
+      for (let q = 1; q <= 10; q++) {
+        html += `<th class="q-col tooltip" data-tooltip="Q${q}: ${SUS_QUESTIONS[q-1]}">Q${q}</th>`;
+      }
+      html += '</tr></thead><tbody>';
+      for (let r = 0; r < count; r++) {
+        html += `<tr><td>응답자 ${r + 1}</td>`;
+        for (let q = 0; q < 10; q++) {
+          html += `<td><input type="number" min="1" max="5" id="r${r}q${q}" onchange="validateInput(this)" onkeyup="handleKeyNav(event,${r},${q},${count})"></td>`;
+        }
+        html += '</tr>';
+      }
+      html += '</tbody></table></div>';
+
+      document.getElementById('tableArea').innerHTML = html;
+      document.getElementById('calcFooter').style.display = '';
+    }
+
+    function validateInput(el) {
+      const v = parseInt(el.value);
+      if (el.value !== '' && (v < 1 || v > 5 || isNaN(v))) {
+        el.classList.add('invalid');
+      } else {
+        el.classList.remove('invalid');
+      }
+    }
+
+    function handleKeyNav(e, r, q, totalR) {
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        let nextQ = q + 1, nextR = r;
+        if (nextQ >= 10) { nextQ = 0; nextR = r + 1; }
+        if (nextR < totalR) {
+          const next = document.getElementById(`r${nextR}q${nextQ}`);
+          if (next) next.focus();
+        }
+      }
+    }
+
+    // ── Sample Data ──
+    function fillSample() {
+      const count = parseInt(document.getElementById('respondentCount').value) || 5;
+      for (let r = 0; r < count; r++) {
+        for (let q = 0; q < 10; q++) {
+          const el = document.getElementById(`r${r}q${q}`);
+          if (el) {
+            el.value = Math.floor(Math.random() * 5) + 1;
+            el.classList.remove('invalid');
+          }
+        }
+      }
+    }
+
+    // ── Calculation ──
+    function calculate() {
+      const count = parseInt(document.getElementById('respondentCount').value) || 5;
+      const respondentScores = [];
+      const perQuestion = new Array(10).fill(0);
+      const perQuestionRaw = new Array(10).fill(0);
+      let valid = true;
+
+      for (let r = 0; r < count; r++) {
+        let sum = 0;
+        for (let q = 0; q < 10; q++) {
+          const el = document.getElementById(`r${r}q${q}`);
+          const v = parseInt(el?.value);
+          if (isNaN(v) || v < 1 || v > 5) {
+            if (el) el.classList.add('invalid');
+            valid = false;
+            continue;
+          }
+          const adjusted = (q % 2 === 0) ? (v - 1) : (5 - v);
+          sum += adjusted;
+          perQuestion[q] += adjusted;
+          perQuestionRaw[q] += v;
+        }
+        respondentScores.push(sum * 2.5);
+      }
+
+      if (!valid) {
+        alert('모든 항목에 1~5 사이의 값을 입력해주세요.');
+        return;
+      }
+
+      const avgScore = respondentScores.reduce((a, b) => a + b, 0) / count;
+      const perQuestionAvg = perQuestion.map(v => (v / count) * 2.5);
+      const perQuestionRawAvg = perQuestionRaw.map(v => v / count);
+      const grade = getGrade(avgScore);
+      const adjective = getAdjective(avgScore);
+
+      lastResult = {
+        score: Math.round(avgScore * 10) / 10,
+        grade: grade.letter,
+        adjective: adjective,
+        perQuestion: perQuestionAvg.map(v => Math.round(v * 10) / 10),
+        perQuestionRawAvg: perQuestionRawAvg.map(v => Math.round(v * 10) / 10),
+        respondentCount: count,
+        respondentScores: respondentScores.map(v => Math.round(v * 10) / 10),
+      };
+
+      renderAnalysis(lastResult, grade);
+    }
+
+    function getGrade(score) {
+      if (score >= 80.3) return { letter: 'A', color: '#4F46E5', bg: 'badge-primary' };
+      if (score >= 68) return { letter: 'B', color: '#10B981', bg: 'badge-success' };
+      if (score >= 51) return { letter: 'C', color: '#F59E0B', bg: 'badge-warning' };
+      if (score >= 25.1) return { letter: 'D', color: '#F97316', bg: 'badge-warning' };
+      return { letter: 'F', color: '#EF4444', bg: 'badge-danger' };
+    }
+
+    function getAdjective(score) {
+      if (score >= 80.3) return 'Excellent';
+      if (score >= 68) return 'Good';
+      if (score >= 51) return 'OK';
+      if (score >= 25.1) return 'Poor';
+      return 'Awful';
+    }
+
+    function getAdjectiveKo(adj) {
+      const map = { 'Excellent': '우수', 'Good': '양호', 'OK': '보통', 'Poor': '미흡', 'Awful': '매우 미흡' };
+      return map[adj] || adj;
+    }
+
+    // ── Render Analysis ──
+    function renderAnalysis(result, grade) {
+      document.getElementById('analysisSection').classList.remove('hidden');
+
+      // Score
+      const scoreEl = document.getElementById('susScore');
+      scoreEl.textContent = result.score;
+      scoreEl.style.color = grade.color;
+
+      // Grade
+      const gradeEl = document.getElementById('susGrade');
+      gradeEl.textContent = result.grade;
+      gradeEl.style.color = grade.color;
+
+      // Adjective
+      const adjBadge = document.getElementById('susAdjectiveBadge');
+      adjBadge.textContent = `${result.adjective} (${getAdjectiveKo(result.adjective)})`;
+      adjBadge.style.color = grade.color;
+
+      // Grade bar marker
+      renderGradeMarker(result.score);
+
+      // Chart
+      renderChart(result);
+
+      // Interpretation
+      renderInterpretation(result);
+
+      // Scroll to analysis
+      document.getElementById('analysisSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function renderGradeMarker(score) {
+      const bar = document.getElementById('gradeBar');
+      // Remove existing marker
+      const existing = bar.querySelector('.grade-marker');
+      if (existing) existing.remove();
+
+      const pct = Math.min(100, Math.max(0, score));
+      const marker = document.createElement('div');
+      marker.className = 'grade-marker';
+      marker.setAttribute('data-score', score);
+      marker.style.left = pct + '%';
+      bar.style.position = 'relative';
+      bar.appendChild(marker);
+    }
+
+    function renderChart(result) {
+      if (currentChart) currentChart.destroy();
+
+      const ctx = document.getElementById('questionChart').getContext('2d');
+      const labels = SUS_QUESTIONS.map((q, i) => `Q${i + 1}`);
+      const colors = result.perQuestionRawAvg.map((_, i) => i % 2 === 0 ? '#4F46E5' : '#F97316');
+      const bgColors = result.perQuestionRawAvg.map((_, i) => i % 2 === 0 ? '#4F46E533' : '#F9731633');
+
+      currentChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: '원점수 평균 (1-5)',
+            data: result.perQuestionRawAvg,
+            backgroundColor: bgColors,
+            borderColor: colors,
+            borderWidth: 2,
+            borderRadius: 4,
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              min: 0,
+              max: 5,
+              ticks: { stepSize: 1 },
+              grid: { color: '#E2E8F033' },
+            },
+            y: {
+              grid: { display: false },
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items) => `Q${items[0].dataIndex + 1}: ${SUS_QUESTIONS[items[0].dataIndex]}`,
+                label: (item) => {
+                  const idx = item.dataIndex;
+                  const type = idx % 2 === 0 ? '긍정' : '부정';
+                  return `원점수 평균: ${item.raw} (${type} 문항)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderInterpretation(result) {
+      const s = result.score;
+      let text = '';
+
+      if (s >= 80.3) {
+        text = `<strong>SUS 점수 ${s}점</strong>은 <strong>A등급(Excellent)</strong>에 해당하며, 산업 평균(68점)을 크게 상회합니다. 사용자들이 시스템의 사용성을 매우 높게 평가하고 있습니다. 현재 수준을 유지하면서 세부 개선 사항에 집중하는 것을 권장합니다.`;
+      } else if (s >= 68) {
+        text = `<strong>SUS 점수 ${s}점</strong>은 <strong>B등급(Good)</strong>에 해당하며, 산업 평균(68점) 이상입니다. 전반적으로 양호한 사용성을 보이지만, A등급(80.3점) 달성을 위해 낮은 점수의 문항을 중심으로 개선이 필요합니다.`;
+      } else if (s >= 51) {
+        text = `<strong>SUS 점수 ${s}점</strong>은 <strong>C등급(OK)</strong>에 해당하며, 산업 평균(68점)에 미치지 못합니다. 사용성 개선이 필요한 단계입니다. 부정 문항(짝수 번호)에서 높은 원점수가 나왔다면 해당 영역의 집중 개선을 권장합니다.`;
+      } else if (s >= 25.1) {
+        text = `<strong>SUS 점수 ${s}점</strong>은 <strong>D등급(Poor)</strong>에 해당하며, 상당한 사용성 문제가 있음을 나타냅니다. 핵심 태스크의 사용성 재설계를 강력히 권장합니다.`;
+      } else {
+        text = `<strong>SUS 점수 ${s}점</strong>은 <strong>F등급(Awful)</strong>에 해당하며, 시스템의 사용성에 심각한 문제가 있습니다. 전면적인 사용성 개선이 필수적입니다.`;
+      }
+
+      // Find weakest questions
+      const sorted = result.perQuestionRawAvg.map((v, i) => ({ q: i, v, type: i % 2 === 0 ? 'positive' : 'negative' }));
+      const weakPositive = sorted.filter(x => x.type === 'positive').sort((a, b) => a.v - b.v);
+      const weakNegative = sorted.filter(x => x.type === 'negative').sort((a, b) => b.v - a.v);
+
+      text += '<br><br><strong>주목할 문항:</strong><ul style="margin-top:8px;padding-left:20px;">';
+
+      if (weakPositive.length > 0 && weakPositive[0].v < 3.5) {
+        text += `<li>Q${weakPositive[0].q + 1}(긍정): 평균 ${weakPositive[0].v}점으로 가장 낮은 긍정 응답 — "${SUS_QUESTIONS[weakPositive[0].q]}"</li>`;
+      }
+      if (weakNegative.length > 0 && weakNegative[0].v > 2.5) {
+        text += `<li>Q${weakNegative[0].q + 1}(부정): 평균 ${weakNegative[0].v}점으로 가장 높은 부정 응답 — "${SUS_QUESTIONS[weakNegative[0].q]}"</li>`;
+      }
+
+      text += `<li>응답자 ${result.respondentCount}명, 개인 점수 범위: ${Math.min(...result.respondentScores)}~${Math.max(...result.respondentScores)}점</li>`;
+      text += '</ul>';
+
+      document.getElementById('interpretationText').innerHTML = text;
+    }
+
+    // ── Export ──
+    function exportCSV() {
+      if (!lastResult) return;
+      const count = lastResult.respondentCount;
+      const rows = [['응답자', ...SUS_QUESTIONS.map((_, i) => `Q${i+1}`), 'SUS 점수']];
+      for (let r = 0; r < count; r++) {
+        const row = [`응답자 ${r+1}`];
+        for (let q = 0; q < 10; q++) {
+          const el = document.getElementById(`r${r}q${q}`);
+          row.push(el ? el.value : '');
+        }
+        row.push(lastResult.respondentScores[r]);
+        rows.push(row);
+      }
+      rows.push([]);
+      rows.push(['평균 SUS 점수', lastResult.score]);
+      rows.push(['등급', lastResult.grade]);
+      rows.push(['평가', lastResult.adjective]);
+      UXExport.downloadCSV(rows, `SUS_${document.getElementById('projectLabel').value || 'result'}.csv`);
+    }
+
+    // ── History ──
+    function saveToHistory() {
+      if (!lastResult) return;
+      const label = document.getElementById('projectLabel').value || '이름 없는 측정';
+      UXStorage.saveHistory('sus', label, {
+        score: lastResult.score,
+        grade: lastResult.grade,
+        perQuestion: lastResult.perQuestion,
+        respondentCount: lastResult.respondentCount,
+        timestamp: new Date().toISOString(),
+      });
+      renderHistory();
+      alert('이력에 저장되었습니다.');
+    }
+
+    function renderHistory() {
+      const history = UXStorage.getHistory('sus');
+      const area = document.getElementById('historyArea');
+      const clearBtn = document.getElementById('clearHistoryBtn');
+
+      if (history.length === 0) {
+        area.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-text">저장된 측정 이력이 없습니다</div></div>';
+        clearBtn.style.display = 'none';
+        return;
+      }
+
+      clearBtn.style.display = '';
+      let html = '';
+      history.forEach((item, idx) => {
+        const d = item.data;
+        const grade = getGrade(d.score);
+        html += `<div class="history-item">
+          <div>
+            <div style="font-weight:600; font-size:14px;">${item.label}</div>
+            <div class="text-sm text-secondary">${UXDate.format(item.timestamp)} · 응답자 ${d.respondentCount}명</div>
+          </div>
+          <div class="flex gap-8" style="align-items:center;">
+            <span style="font-size:24px; font-weight:700; color:${grade.color};">${d.score}</span>
+            <span class="badge ${grade.bg}">${d.grade}</span>
+            <button class="btn btn-danger btn-sm" onclick="deleteHistoryItem('${item.id}')">삭제</button>
+          </div>
+        </div>`;
+      });
+      area.innerHTML = html;
+    }
+
+    function deleteHistoryItem(id) {
+      const history = UXStorage.getHistory('sus').filter(h => h.id !== id);
+      localStorage.setItem(UXStorage._key('sus', 'history'), JSON.stringify(history));
+      renderHistory();
+    }
+
+    function clearHistory() {
+      if (!confirm('모든 측정 이력을 삭제하시겠습니까?')) return;
+      localStorage.removeItem(UXStorage._key('sus', 'history'));
+      renderHistory();
+    }
+
+    // ── Init ──
+    generateTable();
+    renderHistory();
+  </script>
+</body>
+</html>

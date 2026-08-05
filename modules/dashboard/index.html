@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>성과 대시보드 — UX Strategy Toolkit</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    .module-row { cursor: pointer; transition: background 0.15s; }
+    .module-row:hover td { background: var(--primary-light) !important; }
+    .module-row.selected td { background: var(--primary-light) !important; }
+    .activity-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-date { color: var(--text-muted); font-size: 13px; min-width: 130px; font-family: var(--mono); }
+    .activity-label { flex: 1; color: var(--text); }
+    .activity-result { color: var(--text-secondary); font-size: 13px; text-align: right; min-width: 120px; }
+    .detail-panel { display: none; }
+    .detail-panel.active { display: block; }
+    .data-mgmt { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .import-input { display: none; }
+    .chart-container canvas { max-height: 300px; }
+    @media (max-width: 768px) {
+      .data-mgmt { flex-direction: column; align-items: stretch; }
+      .data-mgmt .btn { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="../../index.html" class="back-link">← 돌아가기</a>
+    <h1>성과 대시보드</h1>
+  </nav>
+
+  <main class="container fade-in">
+    <!-- Empty State -->
+    <div id="emptyState" class="card hidden">
+      <div class="empty-state">
+        <div class="empty-state-icon">📈</div>
+        <div class="empty-state-text">아직 측정 데이터가 없습니다. 다른 모듈에서 분석을 시작해보세요.</div>
+      </div>
+      <div class="card-footer">
+        <div class="data-mgmt">
+          <button class="btn btn-secondary" onclick="handleImport()">데이터 가져오기</button>
+          <input type="file" id="importFile" class="import-input" accept=".json" onchange="doImport(event)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard Content (hidden when empty) -->
+    <div id="dashboardContent" class="hidden">
+
+      <!-- 1. Summary Cards -->
+      <div class="grid grid-4 mb-20">
+        <div class="card">
+          <div class="metric">
+            <div class="metric-value" id="totalCount">0</div>
+            <div class="metric-label">전체 측정 수</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="metric">
+            <div class="metric-value" id="activeModules">0</div>
+            <div class="metric-label">활성 모듈</div>
+            <div class="metric-sub" id="activeModulesSub"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="metric">
+            <div class="metric-value text-lg" id="recentDate">-</div>
+            <div class="metric-label">최근 측정일</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="metric">
+            <div class="metric-value text-lg" id="mostUsed">-</div>
+            <div class="metric-label">가장 많이 사용한 모듈</div>
+            <div class="metric-sub" id="mostUsedCount"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Activity Timeline -->
+      <div class="card mb-20">
+        <div class="card-header">📊 월별 측정 추이 (최근 6개월)</div>
+        <div class="card-body">
+          <div class="chart-container">
+            <canvas id="timelineChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Module Overview -->
+      <div class="card mb-20">
+        <div class="card-header">📦 모듈별 현황</div>
+        <div class="card-body" style="padding:0;">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>모듈</th>
+                  <th>측정 수</th>
+                  <th>최근 측정일</th>
+                  <th>핵심 지표</th>
+                </tr>
+              </thead>
+              <tbody id="moduleTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Module Detail Tabs -->
+      <div class="card mb-20" id="detailCard" style="display:none;">
+        <div class="card-header" id="detailCardHeader">모듈 상세</div>
+        <div class="tabs" id="detailTabs"></div>
+        <div class="card-body" id="detailBody"></div>
+      </div>
+
+      <!-- 5. Recent Activity -->
+      <div class="card mb-20">
+        <div class="card-header">🕐 최근 활동 내역</div>
+        <div class="card-body" id="recentActivity"></div>
+      </div>
+
+      <!-- 6. Data Management -->
+      <div class="card">
+        <div class="card-header">🗂️ 데이터 관리</div>
+        <div class="card-body">
+          <div class="data-mgmt">
+            <button class="btn btn-primary" onclick="handleExport()">전체 데이터 내보내기</button>
+            <button class="btn btn-secondary" onclick="handleImport()">데이터 가져오기</button>
+            <input type="file" id="importFile2" class="import-input" accept=".json" onchange="doImport(event)">
+            <button class="btn btn-danger" onclick="handleClearAll()">전체 초기화</button>
+          </div>
+          <div class="alert alert-info mt-12" style="font-size:13px;">
+            내보내기는 모든 모듈의 측정 이력을 JSON 파일로 저장합니다. 가져오기로 이전 데이터를 복원할 수 있습니다.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script src="../../shared/storage.js"></script>
+  <script>
+  (function() {
+    'use strict';
+
+    /* ── Constants ── */
+    const MODULE_KEYS = ['sus', 'heuristic', 'priority', 'before-after', 'kano', 'first-click', 'five-second'];
+
+    const MODULE_NAMES = {
+      'sus': 'SUS 분석',
+      'heuristic': '휴리스틱 평가',
+      'priority': '우선순위 매트릭스',
+      'before-after': 'Before/After 비교',
+      'kano': '카노 모델',
+      'first-click': '퍼스트 클릭',
+      'five-second': '5초 테스트'
+    };
+
+    const MODULE_BADGES = {
+      'sus': 'badge-primary',
+      'heuristic': 'badge-success',
+      'priority': 'badge-warning',
+      'before-after': 'badge-danger',
+      'kano': 'badge-primary',
+      'first-click': 'badge-success',
+      'five-second': 'badge-warning'
+    };
+
+    const MODULE_COLORS = {
+      'sus': '#4F46E5',
+      'heuristic': '#10B981',
+      'priority': '#F59E0B',
+      'before-after': '#EF4444',
+      'kano': '#8B5CF6',
+      'first-click': '#0EA5E9',
+      'five-second': '#EC4899'
+    };
+
+    let timelineChart = null;
+    let detailChart = null;
+    let currentDetailModule = null;
+
+    /* ── Initialize ── */
+    function init() {
+      const allHistory = UXStorage.getAllHistory();
+      if (allHistory.length === 0) {
+        document.getElementById('emptyState').classList.remove('hidden');
+        document.getElementById('dashboardContent').classList.add('hidden');
+      } else {
+        document.getElementById('emptyState').classList.add('hidden');
+        document.getElementById('dashboardContent').classList.remove('hidden');
+        renderSummary(allHistory);
+        renderTimeline(allHistory);
+        renderModuleTable();
+        renderRecentActivity(allHistory);
+      }
+    }
+
+    /* ── 1. Summary Cards ── */
+    function renderSummary(allHistory) {
+      // Total count
+      document.getElementById('totalCount').textContent = allHistory.length;
+
+      // Active modules
+      const moduleCounts = {};
+      allHistory.forEach(h => {
+        moduleCounts[h.module] = (moduleCounts[h.module] || 0) + 1;
+      });
+      const activeCount = Object.keys(moduleCounts).length;
+      document.getElementById('activeModules').textContent = activeCount;
+      document.getElementById('activeModulesSub').textContent = `전체 ${MODULE_KEYS.length}개 중`;
+
+      // Most recent date
+      if (allHistory.length > 0) {
+        document.getElementById('recentDate').textContent = UXDate.format(allHistory[0].timestamp);
+      }
+
+      // Most used module
+      let maxModule = '';
+      let maxCount = 0;
+      Object.entries(moduleCounts).forEach(([mod, cnt]) => {
+        if (cnt > maxCount) { maxCount = cnt; maxModule = mod; }
+      });
+      if (maxModule) {
+        document.getElementById('mostUsed').textContent = MODULE_NAMES[maxModule] || maxModule;
+        document.getElementById('mostUsedCount').textContent = `${maxCount}회 측정`;
+      }
+    }
+
+    /* ── 2. Activity Timeline ── */
+    function renderTimeline(allHistory) {
+      const now = new Date();
+      const months = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        months.push({
+          key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+          label: `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}`
+        });
+      }
+
+      // Count per module per month
+      const activeModules = [...new Set(allHistory.map(h => h.module))];
+      const datasets = activeModules.map(mod => {
+        const data = months.map(m => {
+          return allHistory.filter(h => {
+            const hMonth = h.timestamp.slice(0, 7);
+            return h.module === mod && hMonth === m.key;
+          }).length;
+        });
+        return {
+          label: MODULE_NAMES[mod] || mod,
+          data,
+          borderColor: MODULE_COLORS[mod] || '#64748B',
+          backgroundColor: (MODULE_COLORS[mod] || '#64748B') + '33',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 4,
+          pointHoverRadius: 6
+        };
+      });
+
+      const ctx = document.getElementById('timelineChart').getContext('2d');
+      if (timelineChart) timelineChart.destroy();
+      timelineChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: months.map(m => m.label),
+          datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16 } }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { stepSize: 1, precision: 0 },
+              grid: { color: '#E2E8F033' }
+            },
+            x: {
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
+
+    /* ── 3. Module Overview Table ── */
+    function renderModuleTable() {
+      const tbody = document.getElementById('moduleTableBody');
+      tbody.innerHTML = '';
+
+      const modulesWithData = [];
+
+      MODULE_KEYS.forEach(mod => {
+        const history = UXStorage.getHistory(mod);
+        if (history.length === 0) return;
+
+        modulesWithData.push(mod);
+        const latest = history[0];
+        const keyMetric = getKeyMetric(mod, latest, history);
+
+        const tr = document.createElement('tr');
+        tr.className = 'module-row';
+        tr.dataset.module = mod;
+        tr.innerHTML = `
+          <td><span class="badge ${MODULE_BADGES[mod]}">${MODULE_NAMES[mod]}</span></td>
+          <td>${history.length}회</td>
+          <td class="text-secondary">${UXDate.format(latest.timestamp)}</td>
+          <td>${keyMetric}</td>
+        `;
+        tr.addEventListener('click', () => showModuleDetail(mod));
+        tbody.appendChild(tr);
+      });
+
+      // Show detail for first module if available
+      if (modulesWithData.length > 0 && !currentDetailModule) {
+        showModuleDetail(modulesWithData[0]);
+      }
+    }
+
+    /* ── Key Metrics per Module ── */
+    function getKeyMetric(mod, latest, history) {
+      const data = latest.data;
+      if (!data) return '-';
+
+      try {
+        switch (mod) {
+          case 'sus': {
+            const score = data.score ?? data.totalScore ?? '-';
+            const grade = data.grade ?? '';
+            if (score !== '-') return `점수: <strong>${Number(score).toFixed(1)}</strong> ${grade ? '(' + grade + ')' : ''}`;
+            return '-';
+          }
+          case 'heuristic': {
+            const issues = data.issues ?? data.items ?? [];
+            const total = Array.isArray(issues) ? issues.length : 0;
+            const critical = Array.isArray(issues) ? issues.filter(i => (i.severity ?? i.level ?? 0) >= 4).length : 0;
+            return `이슈 ${total}건 ${critical > 0 ? '<span class="text-danger">(심각 ' + critical + '건)</span>' : ''}`;
+          }
+          case 'kano': {
+            const features = data.features ?? data.results ?? [];
+            const count = Array.isArray(features) ? features.length : 0;
+            // Find dominant category
+            const cats = {};
+            if (Array.isArray(features)) {
+              features.forEach(f => {
+                const cat = f.category ?? f.type ?? '기타';
+                cats[cat] = (cats[cat] || 0) + 1;
+              });
+            }
+            const dominant = Object.entries(cats).sort((a, b) => b[1] - a[1])[0];
+            return `기능 ${count}개${dominant ? ', 주요: ' + dominant[0] : ''}`;
+          }
+          case 'priority': {
+            const items = data.items ?? data.priorities ?? [];
+            const count = Array.isArray(items) ? items.length : 0;
+            const quickWins = Array.isArray(items) ? items.filter(i => {
+              const q = i.quadrant ?? i.category ?? '';
+              return q === 'quick-win' || q === 'Quick Win' || q === '빠른 성과';
+            }).length : 0;
+            return `항목 ${count}개${quickWins > 0 ? ', Quick Win ' + quickWins + '개' : ''}`;
+          }
+          case 'before-after': {
+            const metrics = data.metrics ?? data.items ?? data.comparisons ?? [];
+            if (Array.isArray(metrics) && metrics.length > 0) {
+              const improvements = metrics.map(m => {
+                const before = m.before ?? m.asBefore ?? 0;
+                const after = m.after ?? m.asAfter ?? 0;
+                if (before === 0) return 0;
+                return ((after - before) / Math.abs(before)) * 100;
+              }).filter(v => !isNaN(v));
+              if (improvements.length > 0) {
+                const avg = improvements.reduce((a, b) => a + b, 0) / improvements.length;
+                return `평균 개선율: <strong>${avg >= 0 ? '+' : ''}${avg.toFixed(1)}%</strong>`;
+              }
+            }
+            return '-';
+          }
+          case 'first-click': {
+            const accuracy = data.accuracy ?? data.accuracyRate;
+            if (accuracy != null) return `정확도: <strong>${Number(accuracy).toFixed(1)}%</strong>`;
+            const clicks = data.clicks ?? data.results ?? [];
+            if (Array.isArray(clicks) && clicks.length > 0) {
+              const correct = clicks.filter(c => c.correct || c.inTarget).length;
+              const rate = (correct / clicks.length * 100).toFixed(1);
+              return `정확도: <strong>${rate}%</strong> (${clicks.length}명)`;
+            }
+            return '-';
+          }
+          case 'five-second': {
+            const participants = data.participants ?? data.responses ?? [];
+            const count = Array.isArray(participants) ? participants.length : (typeof participants === 'number' ? participants : 0);
+            return `참여자: ${count}명`;
+          }
+          default:
+            return '-';
+        }
+      } catch (e) {
+        return '-';
+      }
+    }
+
+    /* ── Short key metric for activity list ── */
+    function getShortMetric(mod, data) {
+      if (!data) return '';
+      try {
+        switch (mod) {
+          case 'sus': {
+            const score = data.score ?? data.totalScore;
+            return score != null ? `${Number(score).toFixed(1)}점` : '';
+          }
+          case 'heuristic': {
+            const issues = data.issues ?? data.items ?? [];
+            return Array.isArray(issues) ? `이슈 ${issues.length}건` : '';
+          }
+          case 'kano': {
+            const features = data.features ?? data.results ?? [];
+            return Array.isArray(features) ? `기능 ${features.length}개` : '';
+          }
+          case 'priority': {
+            const items = data.items ?? data.priorities ?? [];
+            return Array.isArray(items) ? `항목 ${items.length}개` : '';
+          }
+          case 'before-after': {
+            const metrics = data.metrics ?? data.items ?? data.comparisons ?? [];
+            return Array.isArray(metrics) ? `지표 ${metrics.length}개` : '';
+          }
+          case 'first-click': {
+            const acc = data.accuracy ?? data.accuracyRate;
+            return acc != null ? `정확도 ${Number(acc).toFixed(1)}%` : '';
+          }
+          case 'five-second': {
+            const p = data.participants ?? data.responses ?? [];
+            const c = Array.isArray(p) ? p.length : (typeof p === 'number' ? p : 0);
+            return c > 0 ? `${c}명 참여` : '';
+          }
+          default: return '';
+        }
+      } catch (e) { return ''; }
+    }
+
+    /* ── 4. Module Detail ── */
+    function showModuleDetail(mod) {
+      currentDetailModule = mod;
+      const card = document.getElementById('detailCard');
+      card.style.display = 'block';
+
+      // Highlight selected row
+      document.querySelectorAll('.module-row').forEach(r => r.classList.remove('selected'));
+      const row = document.querySelector(`.module-row[data-module="${mod}"]`);
+      if (row) row.classList.add('selected');
+
+      // Header
+      document.getElementById('detailCardHeader').innerHTML = `📋 ${MODULE_NAMES[mod]} 상세`;
+
+      // Tabs
+      const tabsContainer = document.getElementById('detailTabs');
+      const modulesWithData = MODULE_KEYS.filter(m => UXStorage.getHistory(m).length > 0);
+      tabsContainer.innerHTML = modulesWithData.map(m =>
+        `<button class="tab ${m === mod ? 'active' : ''}" onclick="window._showDetail('${m}')">${MODULE_NAMES[m]}</button>`
+      ).join('');
+
+      // Body
+      const body = document.getElementById('detailBody');
+      const history = UXStorage.getHistory(mod);
+
+      if (history.length === 0) {
+        body.innerHTML = '<div class="empty-state"><div class="empty-state-text">이 모듈에 데이터가 없습니다.</div></div>';
+        return;
+      }
+
+      // Render chart + summary based on module type
+      body.innerHTML = '';
+
+      switch (mod) {
+        case 'sus':
+          renderSUSDetail(body, history);
+          break;
+        case 'heuristic':
+          renderHeuristicDetail(body, history);
+          break;
+        case 'before-after':
+          renderBeforeAfterDetail(body, history);
+          break;
+        default:
+          renderGenericDetail(body, mod, history);
+          break;
+      }
+    }
+
+    /* ── SUS Detail: Score Trend ── */
+    function renderSUSDetail(container, history) {
+      const scores = history.slice().reverse().map(h => ({
+        label: h.label || UXDate.format(h.timestamp),
+        score: h.data?.score ?? h.data?.totalScore ?? 0,
+        date: UXDate.format(h.timestamp)
+      }));
+
+      container.innerHTML = `
+        <div class="mb-16">
+          <h4 style="font-size:14px; font-weight:600; margin-bottom:12px;">SUS 점수 추이</h4>
+          <div class="chart-container"><canvas id="detailChartCanvas"></canvas></div>
+        </div>
+        <div class="guide-box">
+          <strong>최근 측정:</strong> ${scores[scores.length - 1]?.score.toFixed(1)}점 (${scores[scores.length - 1]?.date})<br>
+          <strong>평균 점수:</strong> ${(scores.reduce((a, b) => a + b.score, 0) / scores.length).toFixed(1)}점<br>
+          <strong>총 측정 횟수:</strong> ${scores.length}회
+        </div>
+      `;
+
+      const ctx = document.getElementById('detailChartCanvas').getContext('2d');
+      if (detailChart) detailChart.destroy();
+      detailChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: scores.map(s => s.label),
+          datasets: [{
+            label: 'SUS 점수',
+            data: scores.map(s => s.score),
+            borderColor: MODULE_COLORS.sus,
+            backgroundColor: MODULE_COLORS.sus + '33',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 5,
+            pointHoverRadius: 7
+          }, {
+            label: '기준선 (68점)',
+            data: scores.map(() => 68),
+            borderColor: '#94A3B8',
+            borderDash: [5, 5],
+            pointRadius: 0,
+            fill: false
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { usePointStyle: true } } },
+          scales: {
+            y: { min: 0, max: 100, grid: { color: '#E2E8F033' } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    /* ── Heuristic Detail: Severity Distribution ── */
+    function renderHeuristicDetail(container, history) {
+      const entries = history.slice().reverse();
+      const severityLabels = ['정보', '경미', '보통', '심각'];
+      const severityColors = ['#64748B', '#F59E0B', '#F97316', '#EF4444'];
+
+      const datasets = [1, 2, 3, 4].map((sev, idx) => ({
+        label: severityLabels[idx],
+        data: entries.map(h => {
+          const issues = h.data?.issues ?? h.data?.items ?? [];
+          return Array.isArray(issues) ? issues.filter(i => (i.severity ?? i.level ?? 0) === sev).length : 0;
+        }),
+        backgroundColor: severityColors[idx]
+      }));
+
+      container.innerHTML = `
+        <div class="mb-16">
+          <h4 style="font-size:14px; font-weight:600; margin-bottom:12px;">심각도 분포 추이</h4>
+          <div class="chart-container"><canvas id="detailChartCanvas"></canvas></div>
+        </div>
+        <div class="guide-box">
+          <strong>총 평가 횟수:</strong> ${entries.length}회<br>
+          <strong>최근 총 이슈:</strong> ${(entries[entries.length - 1]?.data?.issues ?? entries[entries.length - 1]?.data?.items ?? []).length}건
+        </div>
+      `;
+
+      const ctx = document.getElementById('detailChartCanvas').getContext('2d');
+      if (detailChart) detailChart.destroy();
+      detailChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: entries.map(h => h.label || UXDate.format(h.timestamp)),
+          datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { usePointStyle: true } } },
+          scales: {
+            x: { stacked: true, grid: { display: false } },
+            y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1, precision: 0 }, grid: { color: '#E2E8F033' } }
+          }
+        }
+      });
+    }
+
+    /* ── Before/After Detail: Improvement Rates ── */
+    function renderBeforeAfterDetail(container, history) {
+      let rows = '';
+      history.forEach(h => {
+        const metrics = h.data?.metrics ?? h.data?.items ?? h.data?.comparisons ?? [];
+        if (!Array.isArray(metrics)) return;
+        metrics.forEach(m => {
+          const name = m.name ?? m.label ?? m.metric ?? '-';
+          const before = m.before ?? m.asBefore ?? 0;
+          const after = m.after ?? m.asAfter ?? 0;
+          const rate = before !== 0 ? ((after - before) / Math.abs(before) * 100) : 0;
+          const rateStr = `${rate >= 0 ? '+' : ''}${rate.toFixed(1)}%`;
+          const color = rate > 0 ? 'text-success' : rate < 0 ? 'text-danger' : '';
+          rows += `<tr>
+            <td>${h.label || UXDate.format(h.timestamp)}</td>
+            <td>${name}</td>
+            <td>${before}</td>
+            <td>${after}</td>
+            <td class="${color}" style="font-weight:600;">${rateStr}</td>
+          </tr>`;
+        });
+      });
+
+      container.innerHTML = `
+        <div class="mb-16">
+          <h4 style="font-size:14px; font-weight:600; margin-bottom:12px;">개선율 상세</h4>
+          ${rows ? `
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>측정</th><th>지표</th><th>Before</th><th>After</th><th>개선율</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>` : '<div class="text-secondary text-sm">상세 데이터가 없습니다.</div>'}
+        </div>
+        <div class="guide-box">
+          <strong>총 측정 횟수:</strong> ${history.length}회
+        </div>
+      `;
+
+      if (detailChart) { detailChart.destroy(); detailChart = null; }
+    }
+
+    /* ── Generic Detail: Latest Summary ── */
+    function renderGenericDetail(container, mod, history) {
+      const latest = history[0];
+
+      let summaryHtml = '';
+      switch (mod) {
+        case 'kano': {
+          const features = latest.data?.features ?? latest.data?.results ?? [];
+          if (Array.isArray(features) && features.length > 0) {
+            const cats = {};
+            features.forEach(f => {
+              const cat = f.category ?? f.type ?? '기타';
+              cats[cat] = (cats[cat] || 0) + 1;
+            });
+            summaryHtml = `<h4 style="font-size:14px; font-weight:600; margin-bottom:12px;">카테고리 분포</h4>`;
+            summaryHtml += '<div class="flex gap-16" style="flex-wrap:wrap;">';
+            Object.entries(cats).sort((a, b) => b[1] - a[1]).forEach(([cat, cnt]) => {
+              summaryHtml += `<div class="metric" style="padding:12px; min-width:100px;">
+                <div class="metric-value" style="font-size:24px;">${cnt}</div>
+                <div class="metric-label">${cat}</div>
+              </div>`;
+            });
+            summaryHtml += '</div>';
+          }
+          break;
+        }
+        case 'priority': {
+          const items = latest.data?.items ?? latest.data?.priorities ?? [];
+          if (Array.isArray(items) && items.length > 0) {
+            const quads = {};
+            items.forEach(i => {
+              const q = i.quadrant ?? i.category ?? '기타';
+              quads[q] = (quads[q] || 0) + 1;
+            });
+            summaryHtml = `<h4 style="font-size:14px; font-weight:600; margin-bottom:12px;">사분면 분포</h4>`;
+            summaryHtml += '<div class="flex gap-16" style="flex-wrap:wrap;">';
+            Object.entries(quads).forEach(([q, cnt]) => {
+              summaryHtml += `<div class="metric" style="padding:12px; min-width:100px;">
+                <div class="metric-value" style="font-size:24px;">${cnt}</div>
+                <div class="metric-label">${q}</div>
+              </div>`;
+            });
+            summaryHtml += '</div>';
+          }
+          break;
+        }
+        case 'first-click': {
+          const accuracy = latest.data?.accuracy ?? latest.data?.accuracyRate;
+          const clicks = latest.data?.clicks ?? latest.data?.results ?? [];
+          summaryHtml = `<h4 style="font-size:14px; font-weight:600; margin-bottom:12px;">최근 테스트 결과</h4>`;
+          if (accuracy != null) {
+            summaryHtml += `<div class="metric" style="padding:12px;">
+              <div class="metric-value">${Number(accuracy).toFixed(1)}%</div>
+              <div class="metric-label">정확도</div>
+            </div>`;
+          } else if (Array.isArray(clicks) && clicks.length > 0) {
+            const correct = clicks.filter(c => c.correct || c.inTarget).length;
+            summaryHtml += `<div class="flex gap-16">
+              <div class="metric" style="padding:12px;"><div class="metric-value">${clicks.length}</div><div class="metric-label">총 클릭</div></div>
+              <div class="metric" style="padding:12px;"><div class="metric-value">${correct}</div><div class="metric-label">정확 클릭</div></div>
+              <div class="metric" style="padding:12px;"><div class="metric-value">${(correct/clicks.length*100).toFixed(1)}%</div><div class="metric-label">정확도</div></div>
+            </div>`;
+          }
+          break;
+        }
+        case 'five-second': {
+          const participants = latest.data?.participants ?? latest.data?.responses ?? [];
+          const count = Array.isArray(participants) ? participants.length : (typeof participants === 'number' ? participants : 0);
+          summaryHtml = `<h4 style="font-size:14px; font-weight:600; margin-bottom:12px;">최근 테스트 결과</h4>
+            <div class="metric" style="padding:12px;">
+              <div class="metric-value">${count}</div>
+              <div class="metric-label">참여자 수</div>
+            </div>`;
+          break;
+        }
+      }
+
+      container.innerHTML = `
+        <div class="mb-16">${summaryHtml || '<div class="text-secondary">상세 데이터를 표시할 수 없습니다.</div>'}</div>
+        <div class="guide-box">
+          <strong>최근 측정:</strong> ${latest.label || '-'} (${UXDate.format(latest.timestamp)})<br>
+          <strong>총 측정 횟수:</strong> ${history.length}회
+        </div>
+      `;
+
+      if (detailChart) { detailChart.destroy(); detailChart = null; }
+    }
+
+    /* ── 5. Recent Activity ── */
+    function renderRecentActivity(allHistory) {
+      const container = document.getElementById('recentActivity');
+      const recent = allHistory.slice(0, 20);
+
+      if (recent.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-text">활동 내역이 없습니다.</div></div>';
+        return;
+      }
+
+      container.innerHTML = recent.map(h => {
+        const badge = MODULE_BADGES[h.module] || 'badge-neutral';
+        const name = MODULE_NAMES[h.module] || h.module;
+        const shortMetric = getShortMetric(h.module, h.data);
+
+        return `<div class="activity-item">
+          <span class="activity-date">${UXDate.format(h.timestamp)}</span>
+          <span class="badge ${badge}">${name}</span>
+          <span class="activity-label">${h.label || '-'}</span>
+          <span class="activity-result">${shortMetric}</span>
+        </div>`;
+      }).join('');
+    }
+
+    /* ── 6. Data Management ── */
+    window.handleExport = function() {
+      const data = UXStorage.exportAll();
+      const filename = `ux-toolkit-backup-${UXDate.today().replace(/-/g, '')}.json`;
+      UXExport.downloadJSON(data, filename);
+    };
+
+    window.handleImport = function() {
+      const input = document.getElementById('importFile') || document.getElementById('importFile2');
+      input.click();
+    };
+
+    window.doImport = function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (typeof data !== 'object' || data === null) {
+            alert('올바른 JSON 형식이 아닙니다.');
+            return;
+          }
+          const keyCount = Object.keys(data).filter(k => k.startsWith('ux-toolkit')).length;
+          if (keyCount === 0) {
+            alert('UX Toolkit 데이터를 찾을 수 없습니다.');
+            return;
+          }
+          if (confirm(`${keyCount}개 항목을 가져옵니다. 기존 데이터와 병합됩니다. 계속하시겠습니까?`)) {
+            UXStorage.importAll(data);
+            init();
+          }
+        } catch (err) {
+          alert('파일을 읽을 수 없습니다: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    };
+
+    window.handleClearAll = function() {
+      if (!confirm('모든 측정 데이터를 삭제합니다. 이 작업은 되돌릴 수 없습니다.\n\n정말 삭제하시겠습니까?')) return;
+      if (!confirm('마지막 확인입니다. 전체 데이터가 영구적으로 삭제됩니다.')) return;
+      UXStorage.clearAll();
+      init();
+    };
+
+    /* ── Expose for tab clicks ── */
+    window._showDetail = showModuleDetail;
+
+    /* ── Start ── */
+    init();
+  })();
+  </script>
+</body>
+</html>

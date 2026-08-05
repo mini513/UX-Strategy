@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>First Click Test | UX Strategy Toolkit</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <style>
+    .image-container {
+      position: relative;
+      display: inline-block;
+      max-width: 100%;
+      user-select: none;
+    }
+    .image-container img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+    }
+    .image-container canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    .click-dot {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: var(--danger);
+      border: 2px solid white;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      z-index: 10;
+    }
+    .avg-dot {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: var(--primary);
+      border: 3px solid white;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      z-index: 11;
+    }
+    .correct-zone {
+      position: absolute;
+      border: 2px dashed var(--success);
+      background: rgba(16, 185, 129, 0.1);
+      pointer-events: none;
+      z-index: 5;
+    }
+    .correct-zone-drawing {
+      position: absolute;
+      border: 2px dashed var(--primary);
+      background: rgba(79, 70, 229, 0.1);
+      pointer-events: none;
+      z-index: 5;
+    }
+    .drawing-hint {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      pointer-events: none;
+      z-index: 20;
+      white-space: nowrap;
+    }
+    .task-banner {
+      background: var(--primary-light);
+      border: 1px solid #C7D2FE;
+      border-radius: var(--radius-sm);
+      padding: 14px 20px;
+      font-size: 15px;
+      font-weight: 500;
+      color: #3730A3;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .click-list-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .click-list-item:last-child { border-bottom: none; }
+    .click-number {
+      width: 28px;
+      height: 28px;
+      background: var(--primary-light);
+      color: var(--primary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .click-correct { background: var(--success-light); color: #065F46; }
+    .click-incorrect { background: var(--danger-light); color: #991B1B; }
+    .countdown-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 15;
+      pointer-events: none;
+    }
+    .section-step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .step-number {
+      width: 28px;
+      height: 28px;
+      background: var(--primary);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .step-label { font-weight: 600; font-size: 15px; }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="../../index.html" class="back-link">&larr; 돌아가기</a>
+  <h1>First Click Test</h1>
+</nav>
+
+<div class="container">
+
+  <!-- Guide Section -->
+  <div class="card fade-in">
+    <div class="card-header">First Click Test란?</div>
+    <div class="card-body">
+      <div class="guide-box">
+        <strong>사용자가 특정 과업을 수행할 때 처음 클릭하는 위치를 테스트합니다.</strong>
+        <ul>
+          <li>첫 번째 클릭이 정확하면, 과업을 성공적으로 완료할 확률이 <strong>87%</strong>입니다.</li>
+          <li>반대로 첫 클릭이 틀리면 성공률은 <strong>46%</strong>로 급감합니다.</li>
+          <li>내비게이션 구조, 정보 배치, CTA 버튼 가시성 등을 검증할 때 활용합니다.</li>
+          <li>참가자별 클릭 위치를 수집하고, 히트맵으로 시각화하여 패턴을 분석합니다.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Setup Section -->
+  <div class="card fade-in" id="setupCard">
+    <div class="card-header">
+      <div class="section-step">
+        <span class="step-number">1</span>
+        <span class="step-label">테스트 설정</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="form-group">
+        <label class="form-label">테스트 이름</label>
+        <input type="text" class="input" id="testName" placeholder="예: 메인 페이지 내비게이션 테스트">
+      </div>
+      <div class="form-group">
+        <label class="form-label">과업 설명 (참가자에게 표시될 질문)</label>
+        <input type="text" class="input" id="taskDesc" placeholder="예: 설정 메뉴를 열려면 어디를 클릭하시겠습니까?">
+      </div>
+      <div class="form-group">
+        <label class="form-label">UI 스크린샷 업로드</label>
+        <div class="upload-zone" id="uploadZone">
+          <div class="upload-zone-icon">&#128444;</div>
+          <div class="upload-zone-text">이미지를 드래그하거나 클릭하여 업로드</div>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" class="hidden">
+      </div>
+
+      <!-- Image preview with correct zone drawing -->
+      <div id="previewArea" class="hidden">
+        <div class="form-group">
+          <label class="form-label">업로드된 이미지</label>
+          <div class="image-container" id="setupImageContainer">
+            <img id="setupImage" src="" alt="UI Screenshot">
+            <div id="correctZoneRect" class="correct-zone-drawing hidden"></div>
+            <div class="drawing-hint" id="drawingHint">마우스로 드래그하여 정답 영역을 지정하세요 (선택사항)</div>
+          </div>
+        </div>
+        <div class="flex gap-8" style="margin-top: 8px;">
+          <button class="btn btn-sm btn-secondary" id="resetZoneBtn" disabled>정답 영역 초기화</button>
+          <span class="text-sm text-secondary" id="zoneStatus">정답 영역 미설정</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <button class="btn btn-primary" id="startTestBtn" disabled>테스트 시작</button>
+    </div>
+  </div>
+
+  <!-- Test Section -->
+  <div class="card fade-in hidden" id="testCard">
+    <div class="card-header">
+      <div class="section-step">
+        <span class="step-number">2</span>
+        <span class="step-label">테스트 진행</span>
+      </div>
+      <div style="margin-left: auto;">
+        <span class="badge badge-primary" id="participantBadge">0명 참가</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="task-banner" id="taskBanner"></div>
+      <div class="image-container" id="testImageContainer">
+        <img id="testImage" src="" alt="Test Image">
+        <div id="testCorrectZone" class="correct-zone hidden"></div>
+      </div>
+      <div class="flex gap-8 mt-16">
+        <button class="btn btn-primary" id="beginClickBtn">클릭 대기 시작</button>
+        <button class="btn btn-secondary" id="nextParticipantBtn" disabled>다음 참가자</button>
+        <button class="btn btn-success" id="showResultsBtn" disabled style="margin-left: auto;">결과 보기</button>
+      </div>
+      <div class="text-sm text-secondary mt-8" id="clickInstruction">
+        "클릭 대기 시작" 버튼을 눌러 참가자의 클릭을 받으세요.
+      </div>
+    </div>
+  </div>
+
+  <!-- Results Section -->
+  <div class="card fade-in hidden" id="resultsCard">
+    <div class="card-header">
+      <div class="section-step">
+        <span class="step-number">3</span>
+        <span class="step-label">결과 분석</span>
+      </div>
+      <div style="margin-left: auto;">
+        <button class="btn btn-sm" id="exportHeatmapBtn">히트맵 저장</button>
+        <button class="btn btn-sm" id="exportDataBtn">데이터 내보내기</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <!-- Metrics -->
+      <div class="grid grid-3 mb-20" id="metricsGrid">
+        <div class="card">
+          <div class="metric">
+            <div class="metric-value" id="totalClicks">0</div>
+            <div class="metric-label">총 참가자</div>
+          </div>
+        </div>
+        <div class="card" id="accuracyCard" class="hidden">
+          <div class="metric">
+            <div class="metric-value" id="accuracyRate">-</div>
+            <div class="metric-label">정답률</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="metric">
+            <div class="metric-value" id="avgClickTime">-</div>
+            <div class="metric-label">평균 클릭 시간</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Heatmap -->
+      <div class="form-group">
+        <label class="form-label">클릭 히트맵</label>
+        <div class="image-container" id="heatmapContainer">
+          <img id="heatmapImage" src="" alt="Heatmap">
+          <canvas id="heatmapCanvas"></canvas>
+          <div id="avgDot" class="avg-dot hidden"></div>
+          <div id="resultCorrectZone" class="correct-zone hidden"></div>
+        </div>
+      </div>
+
+      <!-- Click List -->
+      <div class="form-group mt-20">
+        <label class="form-label">클릭 위치 상세</label>
+        <div id="clickList" style="max-height: 300px; overflow-y: auto;"></div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <button class="btn btn-secondary" id="backToTestBtn">테스트로 돌아가기</button>
+      <button class="btn btn-primary" id="newTestBtn">새 테스트</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="../../shared/storage.js"></script>
+<script>
+(function() {
+  'use strict';
+
+  // State
+  let imageDataURL = null;
+  let imageNaturalWidth = 0;
+  let imageNaturalHeight = 0;
+  let correctZone = null; // {x, y, w, h} as percentages
+  let clicks = []; // [{x, y, time, isCorrect}] x,y as percentages
+  let isClickable = false;
+  let clickStartTime = 0;
+
+  // Drawing state for correct zone
+  let isDrawing = false;
+  let drawStart = { x: 0, y: 0 };
+
+  // DOM elements
+  const uploadZone = document.getElementById('uploadZone');
+  const fileInput = document.getElementById('fileInput');
+  const previewArea = document.getElementById('previewArea');
+  const setupImage = document.getElementById('setupImage');
+  const setupImageContainer = document.getElementById('setupImageContainer');
+  const correctZoneRect = document.getElementById('correctZoneRect');
+  const drawingHint = document.getElementById('drawingHint');
+  const resetZoneBtn = document.getElementById('resetZoneBtn');
+  const zoneStatus = document.getElementById('zoneStatus');
+  const startTestBtn = document.getElementById('startTestBtn');
+  const testName = document.getElementById('testName');
+  const taskDesc = document.getElementById('taskDesc');
+
+  const setupCard = document.getElementById('setupCard');
+  const testCard = document.getElementById('testCard');
+  const testImage = document.getElementById('testImage');
+  const testImageContainer = document.getElementById('testImageContainer');
+  const testCorrectZone = document.getElementById('testCorrectZone');
+  const taskBanner = document.getElementById('taskBanner');
+  const participantBadge = document.getElementById('participantBadge');
+  const beginClickBtn = document.getElementById('beginClickBtn');
+  const nextParticipantBtn = document.getElementById('nextParticipantBtn');
+  const showResultsBtn = document.getElementById('showResultsBtn');
+  const clickInstruction = document.getElementById('clickInstruction');
+
+  const resultsCard = document.getElementById('resultsCard');
+  const heatmapImage = document.getElementById('heatmapImage');
+  const heatmapCanvas = document.getElementById('heatmapCanvas');
+  const heatmapContainer = document.getElementById('heatmapContainer');
+
+  // ── File Upload ──
+  uploadZone.addEventListener('click', () => fileInput.click());
+
+  uploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadZone.classList.add('dragover');
+  });
+  uploadZone.addEventListener('dragleave', () => {
+    uploadZone.classList.remove('dragover');
+  });
+  uploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) loadImage(file);
+  });
+
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) loadImage(file);
+  });
+
+  function loadImage(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      imageDataURL = e.target.result;
+      const img = new Image();
+      img.onload = () => {
+        imageNaturalWidth = img.naturalWidth;
+        imageNaturalHeight = img.naturalHeight;
+        setupImage.src = imageDataURL;
+        previewArea.classList.remove('hidden');
+        uploadZone.innerHTML = '<div class="upload-zone-icon">&#9989;</div><div class="upload-zone-text">이미지 업로드 완료 (클릭하여 변경)</div>';
+        checkStartReady();
+      };
+      img.src = imageDataURL;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ── Correct Zone Drawing ──
+  setupImageContainer.addEventListener('mousedown', (e) => {
+    if (!imageDataURL) return;
+    const rect = setupImage.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    isDrawing = true;
+    drawStart = { x, y };
+    correctZoneRect.classList.remove('hidden');
+    correctZoneRect.style.left = x + '%';
+    correctZoneRect.style.top = y + '%';
+    correctZoneRect.style.width = '0%';
+    correctZoneRect.style.height = '0%';
+    drawingHint.classList.add('hidden');
+  });
+
+  setupImageContainer.addEventListener('mousemove', (e) => {
+    if (!isDrawing) return;
+    const rect = setupImage.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    const left = Math.min(drawStart.x, x);
+    const top = Math.min(drawStart.y, y);
+    const w = Math.abs(x - drawStart.x);
+    const h = Math.abs(y - drawStart.y);
+    correctZoneRect.style.left = left + '%';
+    correctZoneRect.style.top = top + '%';
+    correctZoneRect.style.width = w + '%';
+    correctZoneRect.style.height = h + '%';
+  });
+
+  document.addEventListener('mouseup', (e) => {
+    if (!isDrawing) return;
+    isDrawing = false;
+    const rect = setupImage.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    const left = Math.max(0, Math.min(drawStart.x, x));
+    const top = Math.max(0, Math.min(drawStart.y, y));
+    const w = Math.min(100 - left, Math.abs(x - drawStart.x));
+    const h = Math.min(100 - top, Math.abs(y - drawStart.y));
+
+    if (w < 2 || h < 2) {
+      correctZoneRect.classList.add('hidden');
+      drawingHint.classList.remove('hidden');
+      return;
+    }
+
+    correctZone = { x: left, y: top, w, h };
+    resetZoneBtn.disabled = false;
+    zoneStatus.textContent = '정답 영역이 설정되었습니다';
+    zoneStatus.style.color = 'var(--success)';
+  });
+
+  resetZoneBtn.addEventListener('click', () => {
+    correctZone = null;
+    correctZoneRect.classList.add('hidden');
+    drawingHint.classList.remove('hidden');
+    resetZoneBtn.disabled = true;
+    zoneStatus.textContent = '정답 영역 미설정';
+    zoneStatus.style.color = '';
+  });
+
+  // ── Validation ──
+  function checkStartReady() {
+    startTestBtn.disabled = !(testName.value.trim() && taskDesc.value.trim() && imageDataURL);
+  }
+  testName.addEventListener('input', checkStartReady);
+  taskDesc.addEventListener('input', checkStartReady);
+
+  // ── Start Test ──
+  startTestBtn.addEventListener('click', () => {
+    setupCard.classList.add('hidden');
+    testCard.classList.remove('hidden');
+    testImage.src = imageDataURL;
+    taskBanner.textContent = taskDesc.value.trim();
+
+    if (correctZone) {
+      testCorrectZone.classList.remove('hidden');
+      testCorrectZone.style.left = correctZone.x + '%';
+      testCorrectZone.style.top = correctZone.y + '%';
+      testCorrectZone.style.width = correctZone.w + '%';
+      testCorrectZone.style.height = correctZone.h + '%';
+    }
+
+    clicks = [];
+    updateParticipantCount();
+  });
+
+  // ── Test Interaction ──
+  beginClickBtn.addEventListener('click', () => {
+    isClickable = true;
+    clickStartTime = Date.now();
+    testImageContainer.style.cursor = 'crosshair';
+    beginClickBtn.disabled = true;
+    nextParticipantBtn.disabled = true;
+    clickInstruction.textContent = '참가자가 화면을 클릭하길 기다리는 중...';
+    // Remove previous click dots
+    testImageContainer.querySelectorAll('.click-dot').forEach(d => d.remove());
+  });
+
+  testImageContainer.addEventListener('click', (e) => {
+    if (!isClickable) return;
+    if (e.target === beginClickBtn || e.target === nextParticipantBtn) return;
+
+    const rect = testImage.getBoundingClientRect();
+    const xPct = ((e.clientX - rect.left) / rect.width) * 100;
+    const yPct = ((e.clientY - rect.top) / rect.height) * 100;
+
+    if (xPct < 0 || xPct > 100 || yPct < 0 || yPct > 100) return;
+
+    const clickTime = ((Date.now() - clickStartTime) / 1000).toFixed(1);
+    let isCorrectClick = null;
+    if (correctZone) {
+      isCorrectClick = (
+        xPct >= correctZone.x &&
+        xPct <= correctZone.x + correctZone.w &&
+        yPct >= correctZone.y &&
+        yPct <= correctZone.y + correctZone.h
+      );
+    }
+
+    clicks.push({ x: xPct, y: yPct, time: parseFloat(clickTime), isCorrect: isCorrectClick });
+
+    // Show dot
+    const dot = document.createElement('div');
+    dot.className = 'click-dot';
+    dot.style.left = xPct + '%';
+    dot.style.top = yPct + '%';
+    testImageContainer.appendChild(dot);
+
+    isClickable = false;
+    testImageContainer.style.cursor = 'default';
+    nextParticipantBtn.disabled = false;
+    showResultsBtn.disabled = false;
+    clickInstruction.textContent = `클릭 기록 완료 (${clickTime}초) — "다음 참가자" 또는 "결과 보기"를 선택하세요.`;
+    updateParticipantCount();
+  });
+
+  nextParticipantBtn.addEventListener('click', () => {
+    isClickable = false;
+    beginClickBtn.disabled = false;
+    nextParticipantBtn.disabled = true;
+    testImageContainer.style.cursor = 'default';
+    clickInstruction.textContent = '"클릭 대기 시작" 버튼을 눌러 다음 참가자의 클릭을 받으세요.';
+    testImageContainer.querySelectorAll('.click-dot').forEach(d => d.remove());
+  });
+
+  function updateParticipantCount() {
+    participantBadge.textContent = clicks.length + '명 참가';
+  }
+
+  // ── Results ──
+  showResultsBtn.addEventListener('click', () => {
+    testCard.classList.add('hidden');
+    resultsCard.classList.remove('hidden');
+    renderResults();
+    saveData();
+  });
+
+  document.getElementById('backToTestBtn').addEventListener('click', () => {
+    resultsCard.classList.add('hidden');
+    testCard.classList.remove('hidden');
+  });
+
+  document.getElementById('newTestBtn').addEventListener('click', () => {
+    resultsCard.classList.add('hidden');
+    setupCard.classList.remove('hidden');
+    // Reset
+    imageDataURL = null;
+    correctZone = null;
+    clicks = [];
+    testName.value = '';
+    taskDesc.value = '';
+    previewArea.classList.add('hidden');
+    uploadZone.innerHTML = '<div class="upload-zone-icon">&#128444;</div><div class="upload-zone-text">이미지를 드래그하거나 클릭하여 업로드</div>';
+    correctZoneRect.classList.add('hidden');
+    drawingHint.classList.remove('hidden');
+    resetZoneBtn.disabled = true;
+    zoneStatus.textContent = '정답 영역 미설정';
+    zoneStatus.style.color = '';
+    startTestBtn.disabled = true;
+    fileInput.value = '';
+  });
+
+  function renderResults() {
+    // Total clicks
+    document.getElementById('totalClicks').textContent = clicks.length;
+
+    // Accuracy
+    const accuracyCard = document.getElementById('accuracyCard');
+    const accuracyRate = document.getElementById('accuracyRate');
+    if (correctZone && clicks.length > 0) {
+      const correct = clicks.filter(c => c.isCorrect).length;
+      const pct = Math.round((correct / clicks.length) * 100);
+      accuracyRate.textContent = pct + '%';
+      accuracyRate.style.color = pct >= 70 ? 'var(--success)' : pct >= 40 ? 'var(--warning)' : 'var(--danger)';
+      accuracyCard.classList.remove('hidden');
+    } else {
+      accuracyRate.textContent = '-';
+      accuracyRate.style.color = '';
+    }
+
+    // Average click time
+    const avgTime = clicks.reduce((s, c) => s + c.time, 0) / clicks.length;
+    document.getElementById('avgClickTime').textContent = avgTime.toFixed(1) + '초';
+
+    // Heatmap
+    heatmapImage.src = imageDataURL;
+    heatmapImage.onload = () => {
+      drawHeatmap();
+      drawAvgDot();
+      if (correctZone) {
+        const rz = document.getElementById('resultCorrectZone');
+        rz.classList.remove('hidden');
+        rz.style.left = correctZone.x + '%';
+        rz.style.top = correctZone.y + '%';
+        rz.style.width = correctZone.w + '%';
+        rz.style.height = correctZone.h + '%';
+      }
+    };
+
+    // Click list
+    renderClickList();
+  }
+
+  function drawHeatmap() {
+    const img = heatmapImage;
+    const displayW = img.clientWidth;
+    const displayH = img.clientHeight;
+
+    heatmapCanvas.width = displayW;
+    heatmapCanvas.height = displayH;
+    heatmapCanvas.style.width = displayW + 'px';
+    heatmapCanvas.style.height = displayH + 'px';
+
+    const ctx = heatmapCanvas.getContext('2d');
+    ctx.clearRect(0, 0, displayW, displayH);
+
+    if (clicks.length === 0) return;
+
+    // Draw intensity map to offscreen canvas
+    const offscreen = document.createElement('canvas');
+    offscreen.width = displayW;
+    offscreen.height = displayH;
+    const offCtx = offscreen.getContext('2d');
+
+    const radius = Math.max(30, Math.min(displayW, displayH) * 0.06);
+
+    // Draw grayscale intensity circles
+    clicks.forEach(click => {
+      const px = (click.x / 100) * displayW;
+      const py = (click.y / 100) * displayH;
+
+      const gradient = offCtx.createRadialGradient(px, py, 0, px, py, radius);
+      gradient.addColorStop(0, 'rgba(0, 0, 0, 0.6)');
+      gradient.addColorStop(0.4, 'rgba(0, 0, 0, 0.3)');
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      offCtx.fillStyle = gradient;
+      offCtx.fillRect(px - radius, py - radius, radius * 2, radius * 2);
+    });
+
+    // Get the intensity data
+    const intensityData = offCtx.getImageData(0, 0, displayW, displayH);
+    const pixels = intensityData.data;
+
+    // Create colorized version
+    const colored = ctx.createImageData(displayW, displayH);
+    const cData = colored.data;
+
+    for (let i = 0; i < pixels.length; i += 4) {
+      const intensity = pixels[i + 3]; // use alpha as intensity
+      if (intensity === 0) continue;
+
+      const t = intensity / 255;
+      const rgb = jetColormap(t);
+
+      cData[i] = rgb[0];
+      cData[i + 1] = rgb[1];
+      cData[i + 2] = rgb[2];
+      cData[i + 3] = Math.min(255, intensity * 1.5); // boost visibility
+    }
+
+    ctx.putImageData(colored, 0, 0);
+  }
+
+  function jetColormap(t) {
+    // Blue -> Cyan -> Green -> Yellow -> Red
+    let r, g, b;
+    if (t < 0.25) {
+      r = 0;
+      g = Math.round(255 * (t / 0.25));
+      b = 255;
+    } else if (t < 0.5) {
+      r = 0;
+      g = 255;
+      b = Math.round(255 * (1 - (t - 0.25) / 0.25));
+    } else if (t < 0.75) {
+      r = Math.round(255 * ((t - 0.5) / 0.25));
+      g = 255;
+      b = 0;
+    } else {
+      r = 255;
+      g = Math.round(255 * (1 - (t - 0.75) / 0.25));
+      b = 0;
+    }
+    return [r, g, b];
+  }
+
+  function drawAvgDot() {
+    if (clicks.length === 0) return;
+    const avgX = clicks.reduce((s, c) => s + c.x, 0) / clicks.length;
+    const avgY = clicks.reduce((s, c) => s + c.y, 0) / clicks.length;
+    const dot = document.getElementById('avgDot');
+    dot.classList.remove('hidden');
+    dot.style.left = avgX + '%';
+    dot.style.top = avgY + '%';
+    dot.title = '평균 클릭 위치';
+  }
+
+  function renderClickList() {
+    const container = document.getElementById('clickList');
+    if (clicks.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-text">클릭 데이터가 없습니다.</div></div>';
+      return;
+    }
+    container.innerHTML = clicks.map((c, i) => {
+      let statusClass = '';
+      let statusText = '';
+      if (c.isCorrect === true) {
+        statusClass = 'click-correct';
+        statusText = '<span class="badge badge-success" style="margin-left:auto;">정답</span>';
+      } else if (c.isCorrect === false) {
+        statusClass = 'click-incorrect';
+        statusText = '<span class="badge badge-danger" style="margin-left:auto;">오답</span>';
+      }
+      return `
+        <div class="click-list-item">
+          <span class="click-number ${statusClass}">${i + 1}</span>
+          <span>X: ${c.x.toFixed(1)}%, Y: ${c.y.toFixed(1)}%</span>
+          <span class="text-secondary text-sm">${c.time}초</span>
+          ${statusText}
+        </div>`;
+    }).join('');
+  }
+
+  // ── Export ──
+  document.getElementById('exportHeatmapBtn').addEventListener('click', () => {
+    // Combine image + heatmap into one canvas for export
+    const exportCanvas = document.createElement('canvas');
+    const img = heatmapImage;
+    exportCanvas.width = img.naturalWidth;
+    exportCanvas.height = img.naturalHeight;
+    const ctx = exportCanvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+
+    // Scale heatmap canvas to natural size
+    const scaleX = img.naturalWidth / heatmapCanvas.width;
+    const scaleY = img.naturalHeight / heatmapCanvas.height;
+    ctx.save();
+    ctx.scale(scaleX, scaleY);
+    ctx.drawImage(heatmapCanvas, 0, 0);
+    ctx.restore();
+
+    UXExport.downloadCanvas(exportCanvas, `first-click-heatmap-${Date.now()}.png`);
+  });
+
+  document.getElementById('exportDataBtn').addEventListener('click', () => {
+    const rows = [['참가자', 'X(%)', 'Y(%)', '클릭시간(초)', '정답여부']];
+    clicks.forEach((c, i) => {
+      rows.push([
+        i + 1,
+        c.x.toFixed(1),
+        c.y.toFixed(1),
+        c.time,
+        c.isCorrect === true ? '정답' : c.isCorrect === false ? '오답' : '-'
+      ]);
+    });
+    UXExport.downloadCSV(rows, `first-click-data-${Date.now()}.csv`);
+  });
+
+  // ── Save ──
+  function saveData() {
+    const label = testName.value.trim() || 'First Click Test';
+    let accuracy = null;
+    if (correctZone && clicks.length > 0) {
+      accuracy = Math.round((clicks.filter(c => c.isCorrect).length / clicks.length) * 100);
+    }
+    UXStorage.saveHistory('first-click', label, {
+      task: taskDesc.value.trim(),
+      clicks: clicks.map(c => ({ x: c.x, y: c.y, time: c.time, isCorrect: c.isCorrect })),
+      correctZone,
+      accuracy,
+      imageSize: { width: imageNaturalWidth, height: imageNaturalHeight },
+      timestamp: new Date().toISOString()
+    });
+  }
+
+})();
+</script>
+
+</body>
+</html>

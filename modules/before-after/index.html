@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Before/After 비교기 — UX Strategy Toolkit</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    .metric-row {
+      display: grid;
+      grid-template-columns: 1.5fr 140px 100px 100px 80px 40px;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .metric-row:last-child { border-bottom: none; }
+    @media (max-width: 768px) {
+      .metric-row {
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        padding: 12px 0;
+      }
+    }
+    .improvement-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .improvement-arrow {
+      font-size: 20px;
+      font-weight: 700;
+      min-width: 36px;
+      text-align: center;
+    }
+    .improvement-detail { flex: 1; }
+    .improvement-rate {
+      font-size: 22px;
+      font-weight: 700;
+      text-align: right;
+      min-width: 80px;
+    }
+    .interpretation {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+      line-height: 1.5;
+    }
+    .overall-summary {
+      background: var(--primary-light);
+      border: 1px solid #C7D2FE;
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      font-size: 15px;
+      line-height: 1.7;
+      color: #3730A3;
+    }
+    .history-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .history-item:last-child { border-bottom: none; }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="../../index.html" class="back-link">← 돌아가기</a>
+    <h1>Before/After 비교기</h1>
+  </nav>
+
+  <main class="container">
+    <!-- Guide -->
+    <div class="guide-box mb-20 fade-in">
+      <strong>Before/After 비교 분석이란?</strong>
+      <p class="mt-4">UX 개선 전후의 핵심 지표를 정량적으로 비교하여 <strong>개선율</strong>을 산출하는 성과 측정 방법입니다.</p>
+      <ul>
+        <li><strong>AS-IS</strong>: 개선 전 측정값 (Baseline)</li>
+        <li><strong>TO-BE</strong>: 개선 후 측정값 (Post-improvement)</li>
+        <li><strong>방향 설정</strong>: 높을수록 좋은 지표(SUS 점수)와 낮을수록 좋은 지표(오류 횟수)를 구분합니다.</li>
+        <li>자동으로 개선율을 계산하고, 지표별 해석 문구를 생성합니다.</li>
+      </ul>
+    </div>
+
+    <!-- Input Section -->
+    <div class="card fade-in">
+      <div class="card-header">지표 입력</div>
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label">프로젝트 / 테스트 라벨</label>
+          <input type="text" id="projectLabel" class="input" placeholder="예: v2.3 사용성 개선 전후 비교" />
+        </div>
+        <hr class="divider">
+
+        <!-- Column headers -->
+        <div class="metric-row" style="border-bottom:2px solid var(--border); padding-bottom:8px;">
+          <span class="form-label" style="margin:0;">지표명</span>
+          <span class="form-label" style="margin:0;">방향</span>
+          <span class="form-label" style="margin:0;">AS-IS</span>
+          <span class="form-label" style="margin:0;">TO-BE</span>
+          <span class="form-label" style="margin:0;">단위</span>
+          <span></span>
+        </div>
+        <div id="metricsContainer"></div>
+        <button class="btn btn-secondary mt-12" id="addMetricBtn">+ 지표 추가</button>
+      </div>
+      <div class="card-footer">
+        <button class="btn btn-danger btn-sm" id="clearAllBtn">전체 삭제</button>
+        <button class="btn btn-primary" id="analyzeBtn">분석 실행</button>
+      </div>
+    </div>
+
+    <!-- Analysis Section -->
+    <div id="analysisSection" style="display:none;">
+      <!-- Summary Cards -->
+      <div class="grid grid-3 mb-20 fade-in">
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-body metric">
+            <div class="metric-value" id="totalCount">0</div>
+            <div class="metric-label">전체 지표</div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-body metric">
+            <div class="metric-value text-success" id="improvedCount">0</div>
+            <div class="metric-label">개선된 지표</div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-body metric">
+            <div class="metric-value text-danger" id="declinedCount">0</div>
+            <div class="metric-label">악화된 지표</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bar Chart -->
+      <div class="card fade-in">
+        <div class="card-header flex-between">
+          <span>AS-IS vs TO-BE 비교 차트</span>
+          <button class="btn btn-sm btn-secondary" id="downloadChartBtn">차트 저장</button>
+        </div>
+        <div class="card-body">
+          <div class="chart-container">
+            <canvas id="comparisonChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Per-metric Results -->
+      <div class="card fade-in">
+        <div class="card-header flex-between">
+          <span>지표별 개선율 분석</span>
+          <button class="btn btn-sm btn-secondary" id="downloadCsvBtn">CSV 다운로드</button>
+        </div>
+        <div class="card-body" id="resultsList"></div>
+      </div>
+
+      <!-- Overall Summary -->
+      <div class="card fade-in">
+        <div class="card-header">종합 분석</div>
+        <div class="card-body">
+          <div class="overall-summary" id="overallSummary"></div>
+        </div>
+      </div>
+
+      <!-- Save -->
+      <div class="card fade-in">
+        <div class="card-footer" style="border-top:none;">
+          <button class="btn btn-primary" id="saveBtn">이력 저장</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- History Section -->
+    <div class="card fade-in mt-24">
+      <div class="card-header flex-between">
+        <span>측정 이력</span>
+        <button class="btn btn-sm btn-ghost" id="clearHistoryBtn">이력 초기화</button>
+      </div>
+      <div class="card-body" id="historyList">
+        <div class="empty-state">
+          <div class="empty-state-icon">📂</div>
+          <div class="empty-state-text">저장된 이력이 없습니다.</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../../shared/storage.js"></script>
+  <script>
+    // ── State ──
+    let metrics = [];
+    let metricIdCounter = 0;
+    let comparisonChart = null;
+
+    const $ = id => document.getElementById(id);
+
+    // ── Default metrics ──
+    function addMetricRow(data) {
+      const id = ++metricIdCounter;
+      metrics.push({ id, ...(data || {}) });
+      renderMetricRows();
+      return id;
+    }
+
+    function renderMetricRows() {
+      const container = $('metricsContainer');
+      container.innerHTML = metrics.map(m => `
+        <div class="metric-row" data-id="${m.id}">
+          <input type="text" class="input input-sm" value="${escapeHtml(m.name || '')}" placeholder="예: SUS 점수" data-field="name" />
+          <select class="select input-sm" data-field="direction">
+            <option value="higher" ${m.direction !== 'lower' ? 'selected' : ''}>높을수록 좋음</option>
+            <option value="lower" ${m.direction === 'lower' ? 'selected' : ''}>낮을수록 좋음</option>
+          </select>
+          <input type="number" class="input input-sm" value="${m.asis ?? ''}" placeholder="AS-IS" data-field="asis" step="any" />
+          <input type="number" class="input input-sm" value="${m.tobe ?? ''}" placeholder="TO-BE" data-field="tobe" step="any" />
+          <input type="text" class="input input-sm" value="${escapeHtml(m.unit || '')}" placeholder="단위" data-field="unit" />
+          <button class="btn btn-ghost btn-sm" onclick="removeMetric(${m.id})" title="삭제">✕</button>
+        </div>
+      `).join('');
+
+      // Sync input changes to state
+      container.querySelectorAll('.metric-row').forEach(row => {
+        const id = parseInt(row.dataset.id);
+        row.querySelectorAll('[data-field]').forEach(input => {
+          input.addEventListener('change', () => {
+            const m = metrics.find(m => m.id === id);
+            if (!m) return;
+            const field = input.dataset.field;
+            if (field === 'asis' || field === 'tobe') {
+              m[field] = input.value !== '' ? parseFloat(input.value) : undefined;
+            } else {
+              m[field] = input.value;
+            }
+          });
+          input.addEventListener('input', () => {
+            const m = metrics.find(m => m.id === id);
+            if (!m) return;
+            const field = input.dataset.field;
+            if (field === 'asis' || field === 'tobe') {
+              m[field] = input.value !== '' ? parseFloat(input.value) : undefined;
+            } else {
+              m[field] = input.value;
+            }
+          });
+        });
+      });
+    }
+
+    function removeMetric(id) {
+      metrics = metrics.filter(m => m.id !== id);
+      renderMetricRows();
+    }
+
+    $('addMetricBtn').addEventListener('click', () => addMetricRow());
+
+    $('clearAllBtn').addEventListener('click', () => {
+      if (!confirm('전체 지표를 삭제하시겠습니까?')) return;
+      metrics = [];
+      renderMetricRows();
+      $('analysisSection').style.display = 'none';
+    });
+
+    function escapeHtml(str) {
+      const d = document.createElement('div');
+      d.textContent = str || '';
+      return d.innerHTML;
+    }
+
+    // ── Calculation ──
+    function calcImprovement(asis, tobe, direction) {
+      if (asis === 0) return { rate: tobe > 0 ? 100 : (tobe < 0 ? -100 : 0), improved: tobe !== 0 };
+      const rawRate = ((tobe - asis) / Math.abs(asis)) * 100;
+      const isLower = direction === 'lower';
+      // For "lower is better": a decrease is positive improvement
+      const displayRate = isLower ? -rawRate : rawRate;
+      return {
+        rate: displayRate,
+        rawChange: tobe - asis,
+        improved: displayRate > 0,
+        unchanged: displayRate === 0,
+      };
+    }
+
+    // ── Analyze ──
+    $('analyzeBtn').addEventListener('click', analyze);
+
+    function analyze() {
+      // Validate: sync all inputs first
+      $('metricsContainer').querySelectorAll('.metric-row').forEach(row => {
+        const id = parseInt(row.dataset.id);
+        const m = metrics.find(m => m.id === id);
+        if (!m) return;
+        row.querySelectorAll('[data-field]').forEach(input => {
+          const field = input.dataset.field;
+          if (field === 'asis' || field === 'tobe') {
+            m[field] = input.value !== '' ? parseFloat(input.value) : undefined;
+          } else {
+            m[field] = input.value;
+          }
+        });
+      });
+
+      const valid = metrics.filter(m => m.name && m.asis !== undefined && m.tobe !== undefined);
+      if (valid.length === 0) {
+        alert('최소 1개 이상의 완전한 지표를 입력하세요.');
+        return;
+      }
+
+      // Calculate
+      const results = valid.map(m => {
+        const calc = calcImprovement(m.asis, m.tobe, m.direction);
+        return { ...m, ...calc };
+      });
+
+      let improvedCount = 0, declinedCount = 0, unchangedCount = 0;
+      results.forEach(r => {
+        if (r.unchanged) unchangedCount++;
+        else if (r.improved) improvedCount++;
+        else declinedCount++;
+      });
+
+      $('analysisSection').style.display = '';
+      $('totalCount').textContent = results.length;
+      $('improvedCount').textContent = improvedCount;
+      $('declinedCount').textContent = declinedCount;
+
+      renderChart(results);
+      renderResults(results);
+      renderOverallSummary(results, improvedCount, declinedCount, unchangedCount);
+      $('analysisSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      // Store for save/export
+      window._lastResults = results;
+    }
+
+    // ── Chart ──
+    function renderChart(results) {
+      if (comparisonChart) comparisonChart.destroy();
+
+      const labels = results.map(r => r.name);
+      const asisData = results.map(r => r.asis);
+      const tobeData = results.map(r => r.tobe);
+
+      const ctx = $('comparisonChart').getContext('2d');
+      comparisonChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'AS-IS',
+              data: asisData,
+              backgroundColor: '#94A3B8',
+              borderColor: '#64748B',
+              borderWidth: 1,
+              borderRadius: 4,
+            },
+            {
+              label: 'TO-BE',
+              data: tobeData,
+              backgroundColor: '#4F46E5',
+              borderColor: '#4338CA',
+              borderWidth: 1,
+              borderRadius: 4,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          aspectRatio: 2,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { usePointStyle: true, padding: 16, font: { size: 13 } }
+            },
+            tooltip: {
+              callbacks: {
+                label(ctx) {
+                  const r = results[ctx.dataIndex];
+                  return `${ctx.dataset.label}: ${ctx.parsed.y}${r.unit ? ' ' + r.unit : ''}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { font: { size: 13 } },
+            },
+            y: {
+              grid: { color: '#E2E8F040' },
+              beginAtZero: true,
+              ticks: { font: { size: 12 } },
+            }
+          }
+        }
+      });
+    }
+
+    // ── Results List ──
+    function renderResults(results) {
+      $('resultsList').innerHTML = results.map(r => {
+        const isGood = r.improved;
+        const isNeutral = r.unchanged;
+        const arrow = isNeutral ? '―' : (isGood ? '▲' : '▼');
+        const color = isNeutral ? 'var(--text-muted)' : (isGood ? 'var(--success)' : 'var(--danger)');
+        const rateStr = (r.rate > 0 ? '+' : '') + r.rate.toFixed(1) + '%';
+        const unit = r.unit || '';
+        const interp = generateInterpretation(r);
+
+        return `<div class="improvement-card">
+          <div class="improvement-arrow" style="color:${color};">${arrow}</div>
+          <div class="improvement-detail">
+            <div style="font-weight:600;">${escapeHtml(r.name)}</div>
+            <div class="text-sm text-secondary mt-4">
+              ${r.asis}${unit} → ${r.tobe}${unit}
+              ${r.direction === 'lower' ? '<span class="badge badge-neutral" style="margin-left:4px;">낮을수록 좋음</span>' : ''}
+            </div>
+            <div class="interpretation">${interp}</div>
+          </div>
+          <div class="improvement-rate" style="color:${color};">${isNeutral ? '0%' : rateStr}</div>
+        </div>`;
+      }).join('');
+    }
+
+    function generateInterpretation(r) {
+      const unit = r.unit || '';
+      const absRate = Math.abs(r.rate).toFixed(1);
+      const diff = Math.abs(r.tobe - r.asis);
+      const diffStr = Number.isInteger(diff) ? diff : diff.toFixed(2);
+
+      if (r.unchanged) {
+        return `${r.name}은(는) 변화가 없습니다 (${r.asis}${unit} 유지).`;
+      }
+
+      if (r.direction === 'lower') {
+        if (r.improved) {
+          return `${r.name}이(가) ${r.asis}${unit}에서 ${r.tobe}${unit}로 <strong style="color:var(--success);">${diffStr}${unit} 감소</strong>하여 ${absRate}% 개선되었습니다.`;
+        } else {
+          return `${r.name}이(가) ${r.asis}${unit}에서 ${r.tobe}${unit}로 <strong style="color:var(--danger);">${diffStr}${unit} 증가</strong>하여 ${absRate}% 악화되었습니다.`;
+        }
+      } else {
+        if (r.improved) {
+          return `${r.name}이(가) ${r.asis}${unit}에서 ${r.tobe}${unit}로 <strong style="color:var(--success);">${diffStr}${unit} 증가</strong>하여 ${absRate}% 개선되었습니다.`;
+        } else {
+          return `${r.name}이(가) ${r.asis}${unit}에서 ${r.tobe}${unit}로 <strong style="color:var(--danger);">${diffStr}${unit} 감소</strong>하여 ${absRate}% 악화되었습니다.`;
+        }
+      }
+    }
+
+    // ── Overall Summary ──
+    function renderOverallSummary(results, improved, declined, unchanged) {
+      const total = results.length;
+      const avgRate = results.reduce((sum, r) => sum + r.rate, 0) / total;
+      const bestMetric = [...results].sort((a, b) => b.rate - a.rate)[0];
+      const worstMetric = [...results].sort((a, b) => a.rate - b.rate)[0];
+
+      let summary = `<strong>분석 결과 요약</strong><br><br>`;
+      summary += `총 <strong>${total}개 지표</strong> 중 `;
+      summary += `<strong style="color:var(--success);">${improved}개 개선</strong>`;
+      if (declined > 0) summary += `, <strong style="color:var(--danger);">${declined}개 악화</strong>`;
+      if (unchanged > 0) summary += `, ${unchanged}개 변화 없음`;
+      summary += `.<br>`;
+      summary += `평균 개선율: <strong>${avgRate >= 0 ? '+' : ''}${avgRate.toFixed(1)}%</strong><br><br>`;
+
+      if (bestMetric && bestMetric.rate > 0) {
+        summary += `가장 크게 개선된 지표: <strong>${escapeHtml(bestMetric.name)}</strong> (${bestMetric.rate > 0 ? '+' : ''}${bestMetric.rate.toFixed(1)}%)<br>`;
+      }
+      if (worstMetric && worstMetric.rate < 0) {
+        summary += `주의가 필요한 지표: <strong>${escapeHtml(worstMetric.name)}</strong> (${worstMetric.rate.toFixed(1)}%)`;
+      }
+
+      $('overallSummary').innerHTML = summary;
+    }
+
+    // ── Download ──
+    $('downloadChartBtn').addEventListener('click', () => {
+      UXExport.downloadCanvas($('comparisonChart'), 'before-after-comparison.png');
+    });
+
+    $('downloadCsvBtn').addEventListener('click', () => {
+      const results = window._lastResults || [];
+      const header = ['지표명', '방향', 'AS-IS', 'TO-BE', '단위', '변화량', '개선율(%)'];
+      const rows = [header, ...results.map(r => [
+        r.name,
+        r.direction === 'lower' ? '낮을수록 좋음' : '높을수록 좋음',
+        r.asis,
+        r.tobe,
+        r.unit || '',
+        (r.tobe - r.asis).toFixed(2),
+        r.rate.toFixed(1),
+      ])];
+      UXExport.downloadCSV(rows, 'before-after-comparison.csv');
+    });
+
+    // ── Save ──
+    $('saveBtn').addEventListener('click', () => {
+      const results = window._lastResults || [];
+      if (results.length === 0) return;
+      const label = $('projectLabel').value.trim() || 'Before/After 비교 ' + UXDate.today();
+      const avgRate = results.reduce((sum, r) => sum + r.rate, 0) / results.length;
+      UXStorage.saveHistory('before-after', label, {
+        metrics: results.map(r => ({
+          name: r.name, direction: r.direction, asis: r.asis, tobe: r.tobe, unit: r.unit, rate: r.rate
+        })),
+        overallImprovement: parseFloat(avgRate.toFixed(1)),
+        timestamp: new Date().toISOString(),
+      });
+      renderHistory();
+      alert('이력이 저장되었습니다.');
+    });
+
+    // ── History ──
+    function renderHistory() {
+      const history = UXStorage.getHistory('before-after');
+      const el = $('historyList');
+      if (history.length === 0) {
+        el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📂</div><div class="empty-state-text">저장된 이력이 없습니다.</div></div>';
+        return;
+      }
+      el.innerHTML = history.map(h => {
+        const d = h.data;
+        const total = (d.metrics || []).length;
+        const rate = d.overallImprovement;
+        const rateColor = rate > 0 ? 'var(--success)' : (rate < 0 ? 'var(--danger)' : 'var(--text-secondary)');
+        return `<div class="history-item">
+          <div>
+            <strong>${escapeHtml(h.label)}</strong>
+            <div class="text-sm text-secondary mt-4">
+              ${UXDate.format(h.timestamp)} · ${total}개 지표 ·
+              <span style="color:${rateColor};font-weight:600;">${rate >= 0 ? '+' : ''}${rate}% 평균 개선</span>
+            </div>
+          </div>
+          <div class="flex gap-8">
+            <button class="btn btn-sm btn-secondary" onclick="loadHistory('${h.id}')">불러오기</button>
+            <button class="btn btn-sm btn-ghost" onclick="deleteHistory('${h.id}')">삭제</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function loadHistory(id) {
+      const history = UXStorage.getHistory('before-after');
+      const entry = history.find(h => h.id === id);
+      if (!entry) return;
+      $('projectLabel').value = entry.label;
+      metricIdCounter = 0;
+      metrics = (entry.data.metrics || []).map(m => ({
+        id: ++metricIdCounter,
+        name: m.name,
+        direction: m.direction,
+        asis: m.asis,
+        tobe: m.tobe,
+        unit: m.unit,
+      }));
+      renderMetricRows();
+      analyze();
+    }
+
+    function deleteHistory(id) {
+      if (!confirm('이 이력을 삭제하시겠습니까?')) return;
+      const history = UXStorage.getHistory('before-after').filter(h => h.id !== id);
+      localStorage.setItem(UXStorage._key('before-after', 'history'), JSON.stringify(history));
+      renderHistory();
+    }
+
+    $('clearHistoryBtn').addEventListener('click', () => {
+      if (!confirm('전체 이력을 초기화하시겠습니까?')) return;
+      UXStorage.clearModule('before-after');
+      renderHistory();
+    });
+
+    // ── Init ──
+    // Add default sample rows
+    addMetricRow({ name: 'SUS 점수', direction: 'higher', asis: undefined, tobe: undefined, unit: '점' });
+    addMetricRow({ name: '태스크 완료 시간', direction: 'lower', asis: undefined, tobe: undefined, unit: '초' });
+    addMetricRow({ name: '오류 횟수', direction: 'lower', asis: undefined, tobe: undefined, unit: '회' });
+    renderHistory();
+  </script>
+</body>
+</html>

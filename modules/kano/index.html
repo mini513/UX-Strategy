@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>카노 모델 분석기 — UX Strategy Toolkit</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <style>
+    .feature-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .feature-row:last-child { border-bottom: none; }
+    .feature-name { font-weight: 600; min-width: 140px; }
+    .feature-answers { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; }
+    .feature-actions { flex-shrink: 0; }
+    .answer-tag { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: var(--bg); color: var(--text-secondary); }
+    .badge-attractive { background: #EEF2FF; color: #4338CA; }
+    .badge-one-dimensional { background: #D1FAE5; color: #065F46; }
+    .badge-must-be { background: #FEF3C7; color: #92400E; }
+    .badge-indifferent { background: #F1F5F9; color: #64748B; }
+    .badge-reverse { background: #FEE2E2; color: #991B1B; }
+    .badge-questionable { background: #FFF7ED; color: #C2410C; }
+    .category-card { padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border); }
+    .category-card-count { font-size: 28px; font-weight: 700; line-height: 1.2; }
+    .category-card-label { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+    .category-card-desc { font-size: 12px; color: var(--text-muted); margin-top: 8px; line-height: 1.5; }
+    .strategy-item { padding: 12px 16px; border-left: 3px solid var(--border); margin-bottom: 8px; border-radius: 0 var(--radius-xs) var(--radius-xs) 0; background: var(--bg); }
+    .strategy-item strong { display: block; margin-bottom: 4px; font-size: 14px; }
+    .strategy-item p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin: 0; }
+    .matrix-table th, .matrix-table td { text-align: center; font-size: 13px; padding: 8px; }
+    .matrix-table .matrix-header { background: var(--primary-light); color: var(--primary); font-weight: 600; }
+    .question-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 768px) { .question-pair { grid-template-columns: 1fr; } }
+    .radio-group { display: flex; flex-direction: column; gap: 6px; }
+    .radio-label { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: var(--radius-xs); cursor: pointer; font-size: 14px; transition: background 0.15s; }
+    .radio-label:hover { background: var(--bg); }
+    .radio-label input[type="radio"] { accent-color: var(--primary); }
+    .section-number { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: var(--primary); color: white; font-size: 12px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="../../index.html" class="back-link">&#8592; 도구 목록</a>
+    <h1>카노 모델 분석기</h1>
+  </nav>
+
+  <main class="container">
+    <!-- Guide Section -->
+    <div class="card fade-in">
+      <div class="card-header">카노 모델이란?</div>
+      <div class="card-body">
+        <div class="guide-box">
+          <strong>카노 모델(Kano Model)</strong>은 고객의 기대와 만족도 간의 관계를 분석하는 품질 분류 프레임워크입니다. 각 기능에 대해 "있을 때"(기능적)와 "없을 때"(역기능적) 두 가지 질문을 통해 5가지 품질 속성으로 분류합니다.
+          <ul>
+            <li><strong>매력적 품질(A)</strong> — 없어도 불만 없지만, 있으면 만족도가 급상승합니다. 차별화 포인트로 활용됩니다.</li>
+            <li><strong>일원적 품질(O)</strong> — 있으면 만족, 없으면 불만. 경쟁력의 핵심이 되는 요소입니다.</li>
+            <li><strong>당연 품질(M)</strong> — 있어도 당연하게 여기지만, 없으면 큰 불만을 유발합니다. 반드시 구현해야 합니다.</li>
+            <li><strong>무관심 품질(I)</strong> — 있든 없든 만족에 영향이 없습니다. 후순위 또는 제거를 검토합니다.</li>
+            <li><strong>역효과 품질(R)</strong> — 있으면 오히려 불만족을 야기합니다. 재검토가 필요합니다.</li>
+            <li><strong>의문 품질(Q)</strong> — 응답이 모순되어 결과를 신뢰하기 어렵습니다. 질문을 재설계해야 합니다.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input Section -->
+    <div class="card fade-in">
+      <div class="card-header"><span class="section-number">1</span> 프로젝트 및 기능 입력</div>
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label">프로젝트명</label>
+          <input type="text" id="projectLabel" class="input" placeholder="예: 2.3 UX 개선" style="max-width:400px;">
+        </div>
+
+        <hr class="divider">
+
+        <div class="form-group">
+          <label class="form-label">기능 이름</label>
+          <input type="text" id="featureName" class="input" placeholder="예: 다크모드 지원" style="max-width:400px;">
+        </div>
+
+        <div class="question-pair">
+          <div>
+            <label class="form-label">기능적 질문: "이 기능이 <strong>있다면</strong> 어떻게 느끼시겠습니까?"</label>
+            <div class="radio-group" id="functionalGroup">
+              <label class="radio-label"><input type="radio" name="functional" value="0"> 마음에 든다 (Like)</label>
+              <label class="radio-label"><input type="radio" name="functional" value="1"> 당연하다 (Expect)</label>
+              <label class="radio-label"><input type="radio" name="functional" value="2"> 상관없다 (Neutral)</label>
+              <label class="radio-label"><input type="radio" name="functional" value="3"> 어쩔 수 없다 (Live with)</label>
+              <label class="radio-label"><input type="radio" name="functional" value="4"> 마음에 들지 않는다 (Dislike)</label>
+            </div>
+          </div>
+          <div>
+            <label class="form-label">역기능적 질문: "이 기능이 <strong>없다면</strong> 어떻게 느끼시겠습니까?"</label>
+            <div class="radio-group" id="dysfunctionalGroup">
+              <label class="radio-label"><input type="radio" name="dysfunctional" value="0"> 마음에 든다 (Like)</label>
+              <label class="radio-label"><input type="radio" name="dysfunctional" value="1"> 당연하다 (Expect)</label>
+              <label class="radio-label"><input type="radio" name="dysfunctional" value="2"> 상관없다 (Neutral)</label>
+              <label class="radio-label"><input type="radio" name="dysfunctional" value="3"> 어쩔 수 없다 (Live with)</label>
+              <label class="radio-label"><input type="radio" name="dysfunctional" value="4"> 마음에 들지 않는다 (Dislike)</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-16">
+          <button class="btn btn-primary" id="addFeatureBtn">기능 추가</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature List -->
+    <div class="card fade-in" id="featureListCard" style="display:none;">
+      <div class="card-header flex-between">
+        <span><span class="section-number">2</span> 등록된 기능 (<span id="featureCount">0</span>개)</span>
+        <button class="btn btn-sm btn-danger" id="clearAllBtn">전체 삭제</button>
+      </div>
+      <div class="card-body" id="featureListBody">
+        <!-- features rendered here -->
+      </div>
+      <div class="card-footer">
+        <button class="btn btn-secondary" id="analyzeBtn" disabled>분석 실행</button>
+      </div>
+    </div>
+
+    <!-- Analysis Results -->
+    <div id="resultsSection" style="display:none;">
+      <!-- Category Summary Cards -->
+      <div class="card fade-in">
+        <div class="card-header"><span class="section-number">3</span> 분류 결과 요약</div>
+        <div class="card-body">
+          <div class="grid grid-3" id="categorySummary">
+            <!-- rendered by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Classification Table -->
+      <div class="card fade-in">
+        <div class="card-header flex-between">
+          <span>기능별 분류표</span>
+          <button class="btn btn-sm btn-secondary" id="exportCsvBtn">CSV 내보내기</button>
+        </div>
+        <div class="card-body">
+          <div class="table-wrap">
+            <table id="classificationTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>기능명</th>
+                  <th>기능적 응답</th>
+                  <th>역기능적 응답</th>
+                  <th>분류</th>
+                </tr>
+              </thead>
+              <tbody id="classificationBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Distribution Chart -->
+      <div class="card fade-in">
+        <div class="card-header">카테고리 분포</div>
+        <div class="card-body">
+          <div class="chart-container">
+            <canvas id="distributionChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Evaluation Matrix Preview -->
+      <div class="card fade-in">
+        <div class="card-header">카노 평가 매트릭스</div>
+        <div class="card-body">
+          <div class="table-wrap">
+            <table class="matrix-table" id="matrixTable">
+              <!-- rendered by JS -->
+            </table>
+          </div>
+          <p class="text-secondary text-sm mt-12">행 = 기능적 질문 응답, 열 = 역기능적 질문 응답. 각 셀은 해당 조합의 분류 결과입니다.</p>
+        </div>
+      </div>
+
+      <!-- Strategy Recommendations -->
+      <div class="card fade-in">
+        <div class="card-header">전략적 제언</div>
+        <div class="card-body" id="strategySection">
+          <!-- rendered by JS -->
+        </div>
+      </div>
+
+      <!-- Save / History -->
+      <div class="card fade-in">
+        <div class="card-header flex-between">
+          <span>저장 및 이력</span>
+          <button class="btn btn-sm btn-primary" id="saveBtn">결과 저장</button>
+        </div>
+        <div class="card-body">
+          <div id="historyList" class="flex-col">
+            <div class="empty-state" id="historyEmpty">
+              <div class="empty-state-text">저장된 이력이 없습니다.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../../shared/storage.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script>
+  (function() {
+    'use strict';
+
+    /* ── Constants ── */
+    const ANSWER_LABELS = ['마음에 든다', '당연하다', '상관없다', '어쩔 수 없다', '마음에 들지 않는다'];
+
+    // Kano classification matrix: [functional][dysfunctional]
+    // 0=Like, 1=Expect, 2=Neutral, 3=Live with, 4=Dislike
+    const KANO_MATRIX = [
+      ['Q', 'A', 'A', 'A', 'O'],
+      ['R', 'I', 'I', 'I', 'M'],
+      ['R', 'I', 'I', 'I', 'M'],
+      ['R', 'I', 'I', 'I', 'M'],
+      ['R', 'R', 'R', 'R', 'Q'],
+    ];
+
+    const CATEGORIES = {
+      A: { key: 'A', label: '매력적', labelFull: '매력적 품질 (Attractive)', badgeClass: 'badge-attractive', color: '#4F46E5', borderColor: '#4338CA',
+           desc: '없어도 불만 없지만 있으면 만족도 급상승', strategy: '차별화 요소로 적극 활용하세요. 고객이 기대하지 않는 가치를 선제적으로 제공하면 강한 인상을 남깁니다. 단, 시간이 지나면 일원적 품질로 변할 수 있으므로 지속적인 혁신이 필요합니다.' },
+      O: { key: 'O', label: '일원적', labelFull: '일원적 품질 (One-dimensional)', badgeClass: 'badge-one-dimensional', color: '#10B981', borderColor: '#059669',
+           desc: '있으면 만족, 없으면 불만', strategy: '경쟁력의 핵심입니다. 경쟁사 대비 더 높은 수준으로 구현하여 차별화하세요. 이 기능들의 품질 수준이 고객 만족도와 직접적으로 비례합니다.' },
+      M: { key: 'M', label: '당연', labelFull: '당연 품질 (Must-be)', badgeClass: 'badge-must-be', color: '#F59E0B', borderColor: '#D97706',
+           desc: '있어도 당연, 없으면 큰 불만', strategy: '반드시 구현해야 하는 기본 요건입니다. 이 기능이 빠지면 고객 이탈의 원인이 됩니다. 과도한 투자보다는 안정적 구현에 집중하세요.' },
+      I: { key: 'I', label: '무관심', labelFull: '무관심 품질 (Indifferent)', badgeClass: 'badge-indifferent', color: '#94A3B8', borderColor: '#64748B',
+           desc: '있든 없든 영향 없음', strategy: '개발 우선순위를 낮추거나 제거를 검토하세요. 리소스를 매력적 품질이나 일원적 품질에 재배분하는 것이 효과적입니다.' },
+      R: { key: 'R', label: '역효과', labelFull: '역효과 품질 (Reverse)', badgeClass: 'badge-reverse', color: '#EF4444', borderColor: '#DC2626',
+           desc: '있으면 오히려 불만', strategy: '해당 기능의 존재가 사용자에게 부정적 영향을 줍니다. 즉시 재검토하거나 제거를 고려하세요. 사용자 인터뷰를 통해 불만의 원인을 심층 분석할 필요가 있습니다.' },
+      Q: { key: 'Q', label: '의문', labelFull: '의문 품질 (Questionable)', badgeClass: 'badge-questionable', color: '#F97316', borderColor: '#EA580C',
+           desc: '응답 모순 — 질문 재설계 필요', strategy: '응답이 논리적으로 모순됩니다. 질문 문구가 모호하거나 응답자가 기능을 잘못 이해했을 가능성이 있습니다. 질문을 재설계하고 다시 조사하세요.' },
+    };
+
+    const CATEGORY_ORDER = ['A', 'O', 'M', 'I', 'R', 'Q'];
+
+    /* ── State ── */
+    let features = [];
+    let chartInstance = null;
+
+    /* ── DOM refs ── */
+    const $projectLabel = document.getElementById('projectLabel');
+    const $featureName = document.getElementById('featureName');
+    const $addFeatureBtn = document.getElementById('addFeatureBtn');
+    const $featureListCard = document.getElementById('featureListCard');
+    const $featureListBody = document.getElementById('featureListBody');
+    const $featureCount = document.getElementById('featureCount');
+    const $clearAllBtn = document.getElementById('clearAllBtn');
+    const $analyzeBtn = document.getElementById('analyzeBtn');
+    const $resultsSection = document.getElementById('resultsSection');
+    const $categorySummary = document.getElementById('categorySummary');
+    const $classificationBody = document.getElementById('classificationBody');
+    const $exportCsvBtn = document.getElementById('exportCsvBtn');
+    const $strategySection = document.getElementById('strategySection');
+    const $saveBtn = document.getElementById('saveBtn');
+    const $historyList = document.getElementById('historyList');
+    const $historyEmpty = document.getElementById('historyEmpty');
+
+    /* ── Helpers ── */
+    function getSelectedRadio(name) {
+      const el = document.querySelector(`input[name="${name}"]:checked`);
+      return el ? parseInt(el.value, 10) : -1;
+    }
+
+    function clearRadioGroup(name) {
+      document.querySelectorAll(`input[name="${name}"]`).forEach(r => r.checked = false);
+    }
+
+    function classify(functional, dysfunctional) {
+      return KANO_MATRIX[functional][dysfunctional];
+    }
+
+    function badgeHTML(category) {
+      const cat = CATEGORIES[category];
+      return `<span class="badge ${cat.badgeClass}">${cat.label} (${cat.key})</span>`;
+    }
+
+    /* ── Feature List Rendering ── */
+    function renderFeatureList() {
+      $featureListCard.style.display = features.length ? '' : 'none';
+      $featureCount.textContent = features.length;
+      $analyzeBtn.disabled = features.length < 1;
+
+      if (!features.length) {
+        $featureListBody.innerHTML = '';
+        return;
+      }
+
+      $featureListBody.innerHTML = features.map((f, i) => `
+        <div class="feature-row">
+          <span class="feature-name">${escapeHTML(f.name)}</span>
+          <div class="feature-answers">
+            <span class="answer-tag">있다면: ${ANSWER_LABELS[f.functional]}</span>
+            <span class="answer-tag">없다면: ${ANSWER_LABELS[f.dysfunctional]}</span>
+          </div>
+          <div class="feature-actions">
+            <button class="btn btn-sm btn-ghost" data-remove="${i}" title="삭제">&times;</button>
+          </div>
+        </div>
+      `).join('');
+
+      $featureListBody.querySelectorAll('[data-remove]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          features.splice(parseInt(btn.dataset.remove, 10), 1);
+          renderFeatureList();
+          if ($resultsSection.style.display !== 'none') runAnalysis();
+        });
+      });
+    }
+
+    function escapeHTML(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    /* ── Add Feature ── */
+    $addFeatureBtn.addEventListener('click', () => {
+      const name = $featureName.value.trim();
+      const functional = getSelectedRadio('functional');
+      const dysfunctional = getSelectedRadio('dysfunctional');
+
+      if (!name) { $featureName.focus(); return alert('기능 이름을 입력하세요.'); }
+      if (functional < 0) return alert('기능적 질문에 응답하세요.');
+      if (dysfunctional < 0) return alert('역기능적 질문에 응답하세요.');
+
+      features.push({ name, functional, dysfunctional });
+      $featureName.value = '';
+      clearRadioGroup('functional');
+      clearRadioGroup('dysfunctional');
+      $featureName.focus();
+      renderFeatureList();
+    });
+
+    $clearAllBtn.addEventListener('click', () => {
+      if (!confirm('등록된 기능을 모두 삭제하시겠습니까?')) return;
+      features = [];
+      renderFeatureList();
+      $resultsSection.style.display = 'none';
+    });
+
+    /* ── Analysis ── */
+    $analyzeBtn.addEventListener('click', runAnalysis);
+
+    function runAnalysis() {
+      if (!features.length) return;
+
+      // Classify all features
+      const classified = features.map(f => ({
+        ...f,
+        category: classify(f.functional, f.dysfunctional),
+      }));
+
+      // Count per category
+      const counts = {};
+      CATEGORY_ORDER.forEach(c => counts[c] = 0);
+      classified.forEach(f => counts[f.category]++);
+
+      // Show results
+      $resultsSection.style.display = '';
+
+      renderCategorySummary(counts);
+      renderClassificationTable(classified);
+      renderDistributionChart(counts);
+      renderMatrix();
+      renderStrategy(counts, classified);
+      renderHistory();
+
+      $resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    /* ── Category Summary Cards ── */
+    function renderCategorySummary(counts) {
+      $categorySummary.innerHTML = CATEGORY_ORDER.map(key => {
+        const cat = CATEGORIES[key];
+        return `
+          <div class="category-card" style="border-left: 3px solid ${cat.color};">
+            <div class="category-card-count" style="color: ${cat.color};">${counts[key]}</div>
+            <div class="category-card-label">${cat.labelFull}</div>
+            <div class="category-card-desc">${cat.desc}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    /* ── Classification Table ── */
+    function renderClassificationTable(classified) {
+      $classificationBody.innerHTML = classified.map((f, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${escapeHTML(f.name)}</td>
+          <td>${ANSWER_LABELS[f.functional]}</td>
+          <td>${ANSWER_LABELS[f.dysfunctional]}</td>
+          <td>${badgeHTML(f.category)}</td>
+        </tr>
+      `).join('');
+    }
+
+    /* ── Distribution Chart ── */
+    function renderDistributionChart(counts) {
+      if (chartInstance) chartInstance.destroy();
+
+      const ctx = document.getElementById('distributionChart').getContext('2d');
+      const labels = CATEGORY_ORDER.map(k => CATEGORIES[k].label);
+      const data = CATEGORY_ORDER.map(k => counts[k]);
+      const colors = CATEGORY_ORDER.map(k => CATEGORIES[k].color);
+      const borderColors = CATEGORY_ORDER.map(k => CATEGORIES[k].borderColor);
+
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: '기능 수',
+            data,
+            backgroundColor: colors.map(c => c + '33'),
+            borderColor: borderColors,
+            borderWidth: 2,
+            borderRadius: 4,
+            borderSkipped: false,
+            barPercentage: 0.65,
+            categoryPercentage: 0.8,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          aspectRatio: 2.2,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#1E293B',
+              titleFont: { size: 13 },
+              bodyFont: { size: 13 },
+              padding: 10,
+              cornerRadius: 8,
+              callbacks: {
+                label: ctx => `${ctx.parsed.y}개 기능`,
+              },
+            },
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { font: { size: 13 }, color: '#64748B' },
+              border: { display: false },
+            },
+            y: {
+              beginAtZero: true,
+              ticks: {
+                stepSize: 1,
+                font: { size: 12 },
+                color: '#94A3B8',
+              },
+              grid: { color: '#F1F5F9' },
+              border: { display: false },
+            },
+          },
+        },
+      });
+    }
+
+    /* ── Evaluation Matrix ── */
+    function renderMatrix() {
+      const headers = ['', '마음에 든다', '당연하다', '상관없다', '어쩔 수 없다', '마음에 들지 않는다'];
+      const rowLabels = ['마음에 든다', '당연하다', '상관없다', '어쩔 수 없다', '마음에 들지 않는다'];
+
+      let html = '<thead><tr>';
+      html += '<th class="matrix-header" style="min-width:100px;">기능적 \\ 역기능적</th>';
+      headers.slice(1).forEach(h => { html += `<th class="matrix-header">${h}</th>`; });
+      html += '</tr></thead><tbody>';
+
+      KANO_MATRIX.forEach((row, ri) => {
+        html += `<tr><td class="matrix-header">${rowLabels[ri]}</td>`;
+        row.forEach(cell => {
+          const cat = CATEGORIES[cell];
+          html += `<td><span class="badge ${cat.badgeClass}">${cat.label}</span></td>`;
+        });
+        html += '</tr>';
+      });
+
+      html += '</tbody>';
+      document.getElementById('matrixTable').innerHTML = html;
+    }
+
+    /* ── Strategy Recommendations ── */
+    function renderStrategy(counts, classified) {
+      const present = CATEGORY_ORDER.filter(k => counts[k] > 0);
+
+      if (!present.length) {
+        $strategySection.innerHTML = '<div class="empty-state"><div class="empty-state-text">분류된 기능이 없습니다.</div></div>';
+        return;
+      }
+
+      let html = '';
+      present.forEach(key => {
+        const cat = CATEGORIES[key];
+        const featureNames = classified.filter(f => f.category === key).map(f => f.name);
+        html += `
+          <div class="strategy-item" style="border-left-color: ${cat.color};">
+            <strong>${cat.labelFull} (${counts[key]}개)</strong>
+            <p style="margin-bottom:6px;">${cat.strategy}</p>
+            <p><strong>해당 기능:</strong> ${featureNames.map(n => escapeHTML(n)).join(', ')}</p>
+          </div>
+        `;
+      });
+
+      $strategySection.innerHTML = html;
+    }
+
+    /* ── CSV Export ── */
+    $exportCsvBtn.addEventListener('click', () => {
+      const rows = [['번호', '기능명', '기능적 응답', '역기능적 응답', '분류 코드', '분류명']];
+      features.forEach((f, i) => {
+        const cat = classify(f.functional, f.dysfunctional);
+        rows.push([i + 1, f.name, ANSWER_LABELS[f.functional], ANSWER_LABELS[f.dysfunctional], cat, CATEGORIES[cat].label]);
+      });
+      const label = $projectLabel.value.trim() || 'kano';
+      UXExport.downloadCSV(rows, `kano_${label}_${UXDate.today()}.csv`);
+    });
+
+    /* ── Save ── */
+    $saveBtn.addEventListener('click', () => {
+      const label = $projectLabel.value.trim();
+      if (!label) return alert('프로젝트명을 입력하세요.');
+
+      const classified = features.map(f => ({
+        ...f,
+        category: classify(f.functional, f.dysfunctional),
+      }));
+
+      const counts = {};
+      CATEGORY_ORDER.forEach(c => counts[c] = 0);
+      classified.forEach(f => counts[f.category]++);
+
+      UXStorage.saveHistory('kano', label, {
+        features: classified,
+        categoryCounts: counts,
+        timestamp: new Date().toISOString(),
+      });
+
+      renderHistory();
+      alert('저장되었습니다.');
+    });
+
+    /* ── History ── */
+    function renderHistory() {
+      const history = UXStorage.getHistory('kano');
+      if (!history.length) {
+        $historyEmpty.style.display = '';
+        return;
+      }
+
+      $historyEmpty.style.display = 'none';
+      const items = history.slice(0, 10);
+
+      $historyList.innerHTML = items.map(h => {
+        const d = h.data;
+        const totalFeatures = d.features ? d.features.length : 0;
+        const countSummary = CATEGORY_ORDER
+          .filter(k => d.categoryCounts && d.categoryCounts[k] > 0)
+          .map(k => `${CATEGORIES[k].label} ${d.categoryCounts[k]}`)
+          .join(' / ');
+
+        return `
+          <div class="flex-between" style="padding:8px 0; border-bottom:1px solid var(--border);">
+            <div>
+              <span class="font-semibold">${escapeHTML(h.label)}</span>
+              <span class="text-secondary text-sm" style="margin-left:8px;">${totalFeatures}개 기능</span>
+              <span class="text-muted text-xs" style="margin-left:8px;">${countSummary}</span>
+            </div>
+            <div class="flex gap-8" style="align-items:center;">
+              <span class="text-muted text-xs">${UXDate.format(h.timestamp)}</span>
+              <button class="btn btn-sm btn-ghost" data-load-id="${h.id}" title="불러오기">불러오기</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      $historyList.querySelectorAll('[data-load-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const item = history.find(h => h.id === btn.dataset.loadId);
+          if (!item) return;
+          loadFromHistory(item);
+        });
+      });
+    }
+
+    function loadFromHistory(item) {
+      $projectLabel.value = item.label;
+      features = (item.data.features || []).map(f => ({
+        name: f.name,
+        functional: f.functional,
+        dysfunctional: f.dysfunctional,
+      }));
+      renderFeatureList();
+      runAnalysis();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    /* ── Init ── */
+    renderHistory();
+
+  })();
+  </script>
+</body>
+</html>

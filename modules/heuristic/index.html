@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>휴리스틱 평가 — UX Strategy Toolkit</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <style>
+    .heuristic-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 12px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+    .heuristic-header {
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+      gap: 12px;
+      transition: background 0.15s;
+    }
+    .heuristic-header:hover { background: var(--bg); }
+    .heuristic-header .h-num {
+      width: 28px;
+      height: 28px;
+      background: var(--primary-light);
+      color: var(--primary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .heuristic-header .h-title {
+      font-weight: 600;
+      font-size: 14px;
+      flex: 1;
+    }
+    .heuristic-header .h-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .heuristic-header .h-count {
+      font-size: 12px;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+    .heuristic-body {
+      border-top: 1px solid var(--border);
+      padding: 16px;
+      display: none;
+    }
+    .heuristic-body.open { display: block; }
+    .heuristic-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      background: var(--bg);
+      border-radius: var(--radius-xs);
+      line-height: 1.6;
+    }
+    .issue-form {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      margin-bottom: 12px;
+      background: var(--bg);
+    }
+    .severity-radio {
+      display: flex;
+      gap: 4px;
+    }
+    .severity-radio label {
+      padding: 4px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+      font-size: 12px;
+      cursor: pointer;
+      background: var(--surface);
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .severity-radio input { display: none; }
+    .severity-radio input:checked + span { font-weight: 600; }
+    .severity-radio label:has(input:checked) {
+      border-color: currentColor;
+    }
+    .severity-radio label.s1:has(input:checked) { background: #F1F5F9; color: #64748B; }
+    .severity-radio label.s2:has(input:checked) { background: #FEF3C7; color: #92400E; }
+    .severity-radio label.s3:has(input:checked) { background: #FFF7ED; color: #C2410C; }
+    .severity-radio label.s4:has(input:checked) { background: #FEE2E2; color: #991B1B; }
+    .issue-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .issue-item:last-child { border-bottom: none; }
+    .issue-item .issue-desc { flex: 1; line-height: 1.5; }
+    .issue-item .issue-loc { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+    .severity-badge {
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .severity-badge.sev-1 { background: #F1F5F9; color: #64748B; }
+    .severity-badge.sev-2 { background: #FEF3C7; color: #92400E; }
+    .severity-badge.sev-3 { background: #FFF7ED; color: #C2410C; }
+    .severity-badge.sev-4 { background: #FEE2E2; color: #991B1B; }
+    .sev-card {
+      text-align: center;
+      padding: 20px 12px;
+    }
+    .sev-card .sev-value {
+      font-size: 36px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .sev-card .sev-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+    .issues-table td { vertical-align: top; font-size: 13px; }
+    .issues-table td:first-child { white-space: nowrap; }
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .history-item:last-child { border-bottom: none; }
+    .has-issues .h-num {
+      background: var(--danger-light) !important;
+      color: var(--danger) !important;
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="../../index.html" class="back-link">← 돌아가기</a>
+    <h1>휴리스틱 평가</h1>
+  </nav>
+
+  <main class="container">
+    <!-- Guide -->
+    <div class="card fade-in">
+      <div class="card-header collapsible-toggle open" onclick="toggleSection(this)">
+        <span style="transition:transform 0.2s; display:inline-block;" class="arrow">▶</span>
+        휴리스틱 평가 가이드
+      </div>
+      <div class="collapsible-content open">
+        <div class="card-body">
+          <div class="guide-box">
+            <strong>휴리스틱 평가란?</strong>
+            <p class="mt-4">Jakob Nielsen이 제안한 10가지 사용성 원칙(휴리스틱)을 기준으로 전문가가 인터페이스를 평가하는 방법입니다. 사용성 테스트 전 주요 문제를 빠르게 발견하는 데 효과적입니다.</p>
+            <ul class="mt-8">
+              <li><strong>평가자:</strong> UX 전문가 3~5명 권장 (1명도 가능)</li>
+              <li><strong>소요 시간:</strong> 1~2시간</li>
+              <li><strong>심각도:</strong> 1(외형적) ~ 4(치명적) 4단계로 분류</li>
+              <li><strong>산출물:</strong> 휴리스틱별 이슈 목록 + 심각도 분포 + 레이더 차트</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input Section -->
+    <div class="card fade-in">
+      <div class="card-header">평가 정보</div>
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label">프로젝트 / 화면명</label>
+          <input type="text" class="input" id="projectLabel" placeholder="예: KAP 2.3 메인 대시보드">
+        </div>
+      </div>
+    </div>
+
+    <!-- 10 Heuristics -->
+    <div id="heuristicsArea" class="fade-in"></div>
+
+    <!-- Analysis Section -->
+    <div id="analysisSection" class="hidden">
+      <!-- Severity Counts -->
+      <div class="grid grid-4 fade-in" id="severityCards"></div>
+
+      <!-- Radar Chart -->
+      <div class="card fade-in">
+        <div class="card-header flex-between">
+          휴리스틱별 심각도 레이더 차트
+          <div class="flex gap-8">
+            <button class="btn btn-sm" onclick="setRadarMode('max')" id="btnMax">최대 심각도</button>
+            <button class="btn btn-sm" onclick="setRadarMode('avg')" id="btnAvg">평균 심각도</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="chart-container" style="max-height:450px; display:flex; justify-content:center;">
+            <canvas id="radarChart" style="max-width:500px;"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Issues Table -->
+      <div class="card fade-in">
+        <div class="card-header flex-between">
+          전체 이슈 목록
+          <span class="text-sm text-secondary" id="totalIssueCount"></span>
+        </div>
+        <div class="card-body">
+          <div class="table-wrap">
+            <table class="issues-table" id="issuesTable">
+              <thead>
+                <tr>
+                  <th style="cursor:pointer;" onclick="sortTable('heuristic')">원칙 ↕</th>
+                  <th style="cursor:pointer;" onclick="sortTable('severity')">심각도 ↕</th>
+                  <th>이슈 내용</th>
+                  <th>위치/화면</th>
+                </tr>
+              </thead>
+              <tbody id="issuesTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary -->
+      <div class="card fade-in">
+        <div class="card-header">평가 요약</div>
+        <div class="card-body">
+          <div id="summaryText" style="background:var(--bg); border-left:4px solid var(--primary); padding:16px 20px; border-radius:0 var(--radius-sm) var(--radius-sm) 0; font-size:14px; line-height:1.8;"></div>
+        </div>
+        <div class="card-footer">
+          <button class="btn" onclick="exportCSV()">CSV 내보내기</button>
+          <button class="btn btn-primary" onclick="saveToHistory()">이력에 저장</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- History Section -->
+    <div class="card fade-in">
+      <div class="card-header flex-between">
+        측정 이력
+        <button class="btn btn-danger btn-sm" onclick="clearHistory()" id="clearHistoryBtn" style="display:none;">전체 삭제</button>
+      </div>
+      <div class="card-body" id="historyArea">
+        <div class="empty-state">
+          <div class="empty-state-icon">✅</div>
+          <div class="empty-state-text">저장된 평가 이력이 없습니다</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../../shared/storage.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script>
+    // ── Heuristic Data ──
+    const HEURISTICS = [
+      {
+        name: '시스템 상태의 가시성',
+        en: 'Visibility of system status',
+        desc: '시스템은 적절한 피드백을 통해 합리적인 시간 내에 사용자에게 현재 무슨 일이 일어나고 있는지 항상 알려주어야 합니다. 로딩 표시, 진행률 바, 상태 메시지 등이 이에 해당합니다.'
+      },
+      {
+        name: '시스템과 현실 세계의 일치',
+        en: 'Match between system and the real world',
+        desc: '시스템은 사용자의 언어(단어, 구문, 개념)를 사용해야 하며, 시스템 중심의 전문 용어가 아닌 현실 세계의 관례를 따라 자연스럽고 논리적인 순서로 정보를 제공해야 합니다.'
+      },
+      {
+        name: '사용자 제어와 자유',
+        en: 'User control and freedom',
+        desc: '사용자가 실수로 시스템 기능을 선택했을 때 원치 않는 상태에서 벗어날 수 있는 명확한 "비상구"를 제공해야 합니다. 실행 취소(Undo)와 재실행(Redo)을 지원해야 합니다.'
+      },
+      {
+        name: '일관성과 표준',
+        en: 'Consistency and standards',
+        desc: '같은 단어, 상황, 동작이 같은 의미인지 사용자가 의아해하지 않도록 플랫폼 관례를 따라야 합니다. 동일한 기능에는 동일한 용어와 아이콘을 사용해야 합니다.'
+      },
+      {
+        name: '오류 예방',
+        en: 'Error prevention',
+        desc: '좋은 오류 메시지보다 중요한 것은 애초에 문제가 발생하지 않도록 신중하게 설계하는 것입니다. 오류가 발생하기 쉬운 상황을 제거하거나 확인 옵션을 제공해야 합니다.'
+      },
+      {
+        name: '기억보다 인식',
+        en: 'Recognition rather than recall',
+        desc: '객체, 동작, 옵션을 눈에 보이게 만들어 사용자의 기억 부하를 최소화해야 합니다. 사용 지침은 적절한 때에 쉽게 검색 가능해야 합니다.'
+      },
+      {
+        name: '사용의 유연성과 효율성',
+        en: 'Flexibility and efficiency of use',
+        desc: '초보 사용자에게는 보이지 않는 단축키(Accelerators)를 제공하여 숙련 사용자의 상호작용 속도를 높여야 합니다. 빈번한 작업을 맞춤화할 수 있어야 합니다.'
+      },
+      {
+        name: '미적이고 미니멀한 디자인',
+        en: 'Aesthetic and minimalist design',
+        desc: '대화(화면)에는 관련 없거나 거의 필요하지 않은 정보를 포함하지 않아야 합니다. 불필요한 정보는 관련 정보와 경쟁하여 상대적 가시성을 떨어뜨립니다.'
+      },
+      {
+        name: '오류 인식, 진단, 복구 지원',
+        en: 'Help users recognize, diagnose, and recover from errors',
+        desc: '오류 메시지는 평이한 언어(코드가 아닌)로 표현하고, 문제를 정확히 지적하며, 건설적으로 해결책을 제안해야 합니다.'
+      },
+      {
+        name: '도움말과 문서',
+        en: 'Help and documentation',
+        desc: '시스템은 도움말 없이도 사용 가능한 것이 가장 좋지만, 도움말과 문서를 제공해야 할 수 있습니다. 이러한 정보는 검색하기 쉽고, 사용자의 과제에 초점을 맞추며, 구체적 단계를 나열해야 합니다.'
+      },
+    ];
+
+    const SEVERITY_LABELS = ['', '외형적 문제', '사소한 문제', '중요한 문제', '치명적 문제'];
+    const SEVERITY_EN = ['', 'Cosmetic', 'Minor', 'Major', 'Catastrophic'];
+
+    // ── State ──
+    let issues = []; // {hIdx, description, severity, location, id}
+    let radarChart = null;
+    let radarMode = 'max';
+    let tableSortKey = null;
+    let tableSortAsc = true;
+
+    // ── Toggle ──
+    function toggleSection(el) {
+      el.classList.toggle('open');
+      const arrow = el.querySelector('.arrow');
+      if (arrow) arrow.style.transform = el.classList.contains('open') ? 'rotate(90deg)' : '';
+      const content = el.nextElementSibling;
+      if (content) content.classList.toggle('open');
+    }
+
+    function toggleHeuristic(idx) {
+      const body = document.getElementById(`hBody${idx}`);
+      if (body) body.classList.toggle('open');
+    }
+
+    // ── Render Heuristics ──
+    function renderHeuristics() {
+      const area = document.getElementById('heuristicsArea');
+      let html = '';
+      HEURISTICS.forEach((h, i) => {
+        const hIssues = issues.filter(x => x.hIdx === i);
+        const hasIssues = hIssues.length > 0;
+        html += `<div class="heuristic-card ${hasIssues ? 'has-issues' : ''}">
+          <div class="heuristic-header" onclick="toggleHeuristic(${i})">
+            <span class="h-num">${i + 1}</span>
+            <div style="flex:1;">
+              <div class="h-title">${h.name}</div>
+              <div class="h-subtitle">${h.en}</div>
+            </div>
+            <span class="h-count">${hIssues.length > 0 ? hIssues.length + '건' : ''}</span>
+          </div>
+          <div class="heuristic-body" id="hBody${i}">
+            <div class="heuristic-desc">${h.desc}</div>
+            <div id="issueForm${i}">
+              <div class="issue-form">
+                <div class="form-group" style="margin-bottom:10px;">
+                  <label class="form-label">이슈 설명</label>
+                  <textarea class="textarea" id="issueDesc${i}" rows="2" placeholder="발견한 문제를 구체적으로 기술하세요"></textarea>
+                </div>
+                <div class="grid grid-2" style="gap:10px;">
+                  <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">심각도</label>
+                    <div class="severity-radio">
+                      <label class="s1"><input type="radio" name="sev${i}" value="1"><span>1 외형적</span></label>
+                      <label class="s2"><input type="radio" name="sev${i}" value="2"><span>2 사소한</span></label>
+                      <label class="s3"><input type="radio" name="sev${i}" value="3" checked><span>3 중요한</span></label>
+                      <label class="s4"><input type="radio" name="sev${i}" value="4"><span>4 치명적</span></label>
+                    </div>
+                  </div>
+                  <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">화면 / 위치</label>
+                    <input type="text" class="input input-sm" id="issueLoc${i}" placeholder="예: 로그인 화면, 설정 탭">
+                  </div>
+                </div>
+                <div style="margin-top:10px; text-align:right;">
+                  <button class="btn btn-primary btn-sm" onclick="addIssue(${i})">이슈 추가</button>
+                </div>
+              </div>
+            </div>
+            <div id="issueList${i}">`;
+
+        hIssues.forEach(issue => {
+          html += renderIssueItem(issue);
+        });
+
+        html += `</div>
+          </div>
+        </div>`;
+      });
+      area.innerHTML = html;
+    }
+
+    function renderIssueItem(issue) {
+      return `<div class="issue-item">
+        <span class="severity-badge sev-${issue.severity}">${SEVERITY_EN[issue.severity]} (${issue.severity})</span>
+        <div class="issue-desc">
+          ${escapeHtml(issue.description)}
+          ${issue.location ? `<div class="issue-loc">${escapeHtml(issue.location)}</div>` : ''}
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="removeIssue('${issue.id}')">삭제</button>
+      </div>`;
+    }
+
+    function escapeHtml(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    // ── Add / Remove Issues ──
+    function addIssue(hIdx) {
+      const descEl = document.getElementById(`issueDesc${hIdx}`);
+      const locEl = document.getElementById(`issueLoc${hIdx}`);
+      const sevEl = document.querySelector(`input[name="sev${hIdx}"]:checked`);
+
+      const desc = descEl.value.trim();
+      if (!desc) {
+        descEl.style.borderColor = 'var(--danger)';
+        descEl.focus();
+        return;
+      }
+
+      const issue = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        hIdx: hIdx,
+        description: desc,
+        severity: parseInt(sevEl?.value || '3'),
+        location: locEl.value.trim(),
+      };
+
+      issues.push(issue);
+      descEl.value = '';
+      locEl.value = '';
+      descEl.style.borderColor = '';
+
+      // Add to inline list
+      const list = document.getElementById(`issueList${hIdx}`);
+      list.innerHTML += renderIssueItem(issue);
+
+      // Update count badge
+      const card = list.closest('.heuristic-card');
+      card.classList.add('has-issues');
+      const countEl = card.querySelector('.h-count');
+      const count = issues.filter(x => x.hIdx === hIdx).length;
+      countEl.textContent = count + '건';
+
+      updateAnalysis();
+    }
+
+    function removeIssue(id) {
+      const issue = issues.find(x => x.id === id);
+      if (!issue) return;
+      issues = issues.filter(x => x.id !== id);
+      renderHeuristics();
+      // Re-open the heuristic panel that was being edited
+      const body = document.getElementById(`hBody${issue.hIdx}`);
+      if (body) body.classList.add('open');
+      updateAnalysis();
+    }
+
+    // ── Analysis ──
+    function updateAnalysis() {
+      if (issues.length === 0) {
+        document.getElementById('analysisSection').classList.add('hidden');
+        return;
+      }
+
+      document.getElementById('analysisSection').classList.remove('hidden');
+
+      // Severity counts
+      const counts = [0, 0, 0, 0, 0];
+      issues.forEach(x => counts[x.severity]++);
+
+      const sevColors = ['', '#64748B', '#F59E0B', '#F97316', '#EF4444'];
+      const sevBg = ['', '#F1F5F9', '#FEF3C7', '#FFF7ED', '#FEE2E2'];
+      let cardsHtml = '';
+      for (let s = 1; s <= 4; s++) {
+        cardsHtml += `<div class="card"><div class="sev-card">
+          <div class="sev-value" style="color:${sevColors[s]};">${counts[s]}</div>
+          <div class="sev-label">${SEVERITY_LABELS[s]}</div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${SEVERITY_EN[s]}</div>
+        </div></div>`;
+      }
+      document.getElementById('severityCards').innerHTML = cardsHtml;
+
+      // Radar chart
+      renderRadarChart();
+
+      // Issues table
+      renderIssuesTable();
+
+      // Summary
+      renderSummary(counts);
+    }
+
+    function setRadarMode(mode) {
+      radarMode = mode;
+      document.getElementById('btnMax').classList.toggle('btn-primary', mode === 'max');
+      document.getElementById('btnMax').classList.toggle('btn-secondary', mode !== 'max');
+      document.getElementById('btnAvg').classList.toggle('btn-primary', mode === 'avg');
+      document.getElementById('btnAvg').classList.toggle('btn-secondary', mode !== 'avg');
+      renderRadarChart();
+    }
+
+    function renderRadarChart() {
+      if (radarChart) radarChart.destroy();
+
+      const labels = HEURISTICS.map((h, i) => `H${i + 1}`);
+      const data = HEURISTICS.map((_, i) => {
+        const hIssues = issues.filter(x => x.hIdx === i);
+        if (hIssues.length === 0) return 0;
+        if (radarMode === 'max') return Math.max(...hIssues.map(x => x.severity));
+        return hIssues.reduce((s, x) => s + x.severity, 0) / hIssues.length;
+      });
+
+      const ctx = document.getElementById('radarChart').getContext('2d');
+      radarChart = new Chart(ctx, {
+        type: 'radar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: radarMode === 'max' ? '최대 심각도' : '평균 심각도',
+            data: data,
+            backgroundColor: 'rgba(79, 70, 229, 0.15)',
+            borderColor: '#4F46E5',
+            borderWidth: 2,
+            pointBackgroundColor: data.map(v => {
+              if (v >= 4) return '#EF4444';
+              if (v >= 3) return '#F97316';
+              if (v >= 2) return '#F59E0B';
+              if (v >= 1) return '#64748B';
+              return '#E2E8F0';
+            }),
+            pointRadius: 5,
+            pointHoverRadius: 7,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          scales: {
+            r: {
+              min: 0,
+              max: 4,
+              ticks: {
+                stepSize: 1,
+                callback: v => ['', '1-외형', '2-사소', '3-중요', '4-치명'][v] || '',
+                font: { size: 11 },
+              },
+              pointLabels: {
+                font: { size: 12, weight: '600' },
+                callback: (label, idx) => `${label}: ${HEURISTICS[idx].name}`,
+              },
+              grid: { color: '#E2E8F044' },
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items) => {
+                  const idx = items[0].dataIndex;
+                  return `H${idx + 1}: ${HEURISTICS[idx].name}`;
+                },
+                label: (item) => {
+                  const v = item.raw;
+                  const count = issues.filter(x => x.hIdx === item.dataIndex).length;
+                  const modeLabel = radarMode === 'max' ? '최대 심각도' : '평균 심각도';
+                  return `${modeLabel}: ${typeof v === 'number' ? v.toFixed(1) : v} (${count}건)`;
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // Set initial button state
+      document.getElementById('btnMax').classList.toggle('btn-primary', radarMode === 'max');
+      document.getElementById('btnAvg').classList.toggle('btn-primary', radarMode === 'avg');
+    }
+
+    function renderIssuesTable() {
+      let sorted = [...issues];
+      if (tableSortKey === 'severity') {
+        sorted.sort((a, b) => tableSortAsc ? a.severity - b.severity : b.severity - a.severity);
+      } else if (tableSortKey === 'heuristic') {
+        sorted.sort((a, b) => tableSortAsc ? a.hIdx - b.hIdx : b.hIdx - a.hIdx);
+      } else {
+        sorted.sort((a, b) => b.severity - a.severity);
+      }
+
+      let html = '';
+      sorted.forEach(issue => {
+        html += `<tr>
+          <td>H${issue.hIdx + 1}</td>
+          <td><span class="severity-badge sev-${issue.severity}">${SEVERITY_EN[issue.severity]} (${issue.severity})</span></td>
+          <td>${escapeHtml(issue.description)}</td>
+          <td style="color:var(--text-muted);">${escapeHtml(issue.location || '-')}</td>
+        </tr>`;
+      });
+
+      document.getElementById('issuesTableBody').innerHTML = html;
+      document.getElementById('totalIssueCount').textContent = `총 ${issues.length}건`;
+    }
+
+    function sortTable(key) {
+      if (tableSortKey === key) {
+        tableSortAsc = !tableSortAsc;
+      } else {
+        tableSortKey = key;
+        tableSortAsc = key === 'heuristic';
+      }
+      renderIssuesTable();
+    }
+
+    function renderSummary(counts) {
+      const total = issues.length;
+      const critical = counts[4];
+      const major = counts[3];
+
+      // Find heuristics with most issues
+      const hCounts = HEURISTICS.map((_, i) => ({
+        idx: i,
+        count: issues.filter(x => x.hIdx === i).length,
+        maxSev: Math.max(0, ...issues.filter(x => x.hIdx === i).map(x => x.severity)),
+      })).filter(x => x.count > 0).sort((a, b) => b.maxSev - a.maxSev || b.count - a.count);
+
+      let text = `<strong>총 ${total}건의 이슈</strong>가 발견되었습니다.`;
+
+      if (critical > 0) {
+        text += ` 이 중 <strong style="color:var(--danger);">${critical}건이 치명적(Catastrophic)</strong> 문제로, 즉시 개선이 필요합니다.`;
+      }
+      if (major > 0) {
+        text += ` <strong style="color:#F97316;">${major}건이 중요한(Major)</strong> 문제로 분류되었습니다.`;
+      }
+
+      if (hCounts.length > 0) {
+        text += '<br><br><strong>가장 심각한 원칙:</strong><ul style="margin-top:8px;padding-left:20px;">';
+        const top3 = hCounts.slice(0, 3);
+        top3.forEach(h => {
+          text += `<li><strong>H${h.idx + 1} ${HEURISTICS[h.idx].name}</strong> — ${h.count}건 (최대 심각도: ${h.maxSev})</li>`;
+        });
+        text += '</ul>';
+      }
+
+      const noIssueH = HEURISTICS.map((_, i) => i).filter(i => issues.filter(x => x.hIdx === i).length === 0);
+      if (noIssueH.length > 0 && noIssueH.length <= 5) {
+        text += `<br><strong>이슈 없는 원칙:</strong> ${noIssueH.map(i => `H${i + 1}`).join(', ')}`;
+      }
+
+      document.getElementById('summaryText').innerHTML = text;
+    }
+
+    // ── Export ──
+    function exportCSV() {
+      if (issues.length === 0) return;
+      const rows = [['원칙 번호', '원칙명', '심각도', '심각도 라벨', '이슈 설명', '화면/위치']];
+      issues.sort((a, b) => a.hIdx - b.hIdx || b.severity - a.severity).forEach(issue => {
+        rows.push([
+          `H${issue.hIdx + 1}`,
+          HEURISTICS[issue.hIdx].name,
+          issue.severity,
+          SEVERITY_LABELS[issue.severity],
+          issue.description,
+          issue.location || '',
+        ]);
+      });
+      UXExport.downloadCSV(rows, `Heuristic_${document.getElementById('projectLabel').value || 'result'}.csv`);
+    }
+
+    // ── History ──
+    function saveToHistory() {
+      if (issues.length === 0) return;
+      const label = document.getElementById('projectLabel').value || '이름 없는 평가';
+
+      const severityCounts = [0, 0, 0, 0, 0];
+      issues.forEach(x => severityCounts[x.severity]++);
+
+      const heuristicScores = HEURISTICS.map((_, i) => {
+        const hIssues = issues.filter(x => x.hIdx === i);
+        return {
+          count: hIssues.length,
+          maxSeverity: hIssues.length > 0 ? Math.max(...hIssues.map(x => x.severity)) : 0,
+          avgSeverity: hIssues.length > 0 ? hIssues.reduce((s, x) => s + x.severity, 0) / hIssues.length : 0,
+        };
+      });
+
+      UXStorage.saveHistory('heuristic', label, {
+        issues: issues.map(x => ({ ...x })),
+        heuristicScores: heuristicScores,
+        severityCounts: severityCounts,
+        timestamp: new Date().toISOString(),
+      });
+
+      renderHistoryList();
+      alert('이력에 저장되었습니다.');
+    }
+
+    function renderHistoryList() {
+      const history = UXStorage.getHistory('heuristic');
+      const area = document.getElementById('historyArea');
+      const clearBtn = document.getElementById('clearHistoryBtn');
+
+      if (history.length === 0) {
+        area.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">저장된 평가 이력이 없습니다</div></div>';
+        clearBtn.style.display = 'none';
+        return;
+      }
+
+      clearBtn.style.display = '';
+      let html = '';
+      history.forEach(item => {
+        const d = item.data;
+        const total = d.issues ? d.issues.length : 0;
+        const critical = d.severityCounts ? d.severityCounts[4] : 0;
+        const major = d.severityCounts ? d.severityCounts[3] : 0;
+        html += `<div class="history-item">
+          <div>
+            <div style="font-weight:600; font-size:14px;">${item.label}</div>
+            <div class="text-sm text-secondary">${UXDate.format(item.timestamp)} · ${total}건</div>
+          </div>
+          <div class="flex gap-8" style="align-items:center;">
+            ${critical > 0 ? `<span class="severity-badge sev-4">치명 ${critical}</span>` : ''}
+            ${major > 0 ? `<span class="severity-badge sev-3">중요 ${major}</span>` : ''}
+            <button class="btn btn-secondary btn-sm" onclick="loadHistory('${item.id}')">불러오기</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteHistoryItem('${item.id}')">삭제</button>
+          </div>
+        </div>`;
+      });
+      area.innerHTML = html;
+    }
+
+    function loadHistory(id) {
+      const history = UXStorage.getHistory('heuristic');
+      const item = history.find(h => h.id === id);
+      if (!item || !item.data.issues) return;
+
+      document.getElementById('projectLabel').value = item.label;
+      issues = item.data.issues.map(x => ({ ...x }));
+      renderHeuristics();
+      updateAnalysis();
+
+      document.getElementById('heuristicsArea').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function deleteHistoryItem(id) {
+      const history = UXStorage.getHistory('heuristic').filter(h => h.id !== id);
+      localStorage.setItem(UXStorage._key('heuristic', 'history'), JSON.stringify(history));
+      renderHistoryList();
+    }
+
+    function clearHistory() {
+      if (!confirm('모든 평가 이력을 삭제하시겠습니까?')) return;
+      localStorage.removeItem(UXStorage._key('heuristic', 'history'));
+      renderHistoryList();
+    }
+
+    // ── Init ──
+    renderHeuristics();
+    renderHistoryList();
+    setRadarMode('max');
+  </script>
+</body>
+</html>

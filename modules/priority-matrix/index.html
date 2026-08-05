@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>우선순위 매트릭스 — UX Strategy Toolkit</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    .item-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .item-row:last-child { border-bottom: none; }
+    .item-name { flex: 1; font-weight: 500; }
+    .item-scores { display: flex; gap: 12px; font-size: 13px; color: var(--text-secondary); }
+    .slider-group { display: flex; flex-direction: column; gap: 4px; }
+    .slider-header { display: flex; justify-content: space-between; align-items: center; }
+    .slider-value {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--primary-light); color: var(--primary);
+      font-weight: 600; font-size: 14px;
+    }
+    .priority-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 16px; border-radius: var(--radius-sm);
+      margin-bottom: 6px; font-size: 14px;
+    }
+    .priority-rank {
+      width: 24px; height: 24px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600; color: white;
+    }
+    .history-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .history-item:last-child { border-bottom: none; }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="../../index.html" class="back-link">← 돌아가기</a>
+    <h1>우선순위 매트릭스</h1>
+  </nav>
+
+  <main class="container">
+    <!-- Guide -->
+    <div class="guide-box mb-20 fade-in">
+      <strong>Impact × Effort 매트릭스란?</strong>
+      <p class="mt-4">UX 개선안의 <strong>영향도(Impact)</strong>와 <strong>소요 노력(Effort)</strong>을 평가하여 4사분면에 배치하는 의사결정 프레임워크입니다.</p>
+      <ul>
+        <li><strong>Quick Win</strong> (높은 영향 / 낮은 노력) — 최우선 실행 항목</li>
+        <li><strong>Strategic</strong> (높은 영향 / 높은 노력) — 계획적으로 추진</li>
+        <li><strong>Fill-in</strong> (낮은 영향 / 낮은 노력) — 여유 시 처리</li>
+        <li><strong>Deprioritize</strong> (낮은 영향 / 높은 노력) — 후순위 또는 보류</li>
+      </ul>
+    </div>
+
+    <!-- Input Section -->
+    <div class="card fade-in">
+      <div class="card-header">항목 입력</div>
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label">프로젝트 / 분석 라벨</label>
+          <input type="text" id="projectLabel" class="input" placeholder="예: 2.3 릴리스 UX 개선안 우선순위" />
+        </div>
+        <hr class="divider">
+        <div class="grid grid-2" style="align-items:end;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">항목명</label>
+            <input type="text" id="itemName" class="input" placeholder="예: 온보딩 위저드 개편" />
+          </div>
+          <div></div>
+        </div>
+        <div class="grid grid-2 mt-16">
+          <div class="slider-group">
+            <div class="slider-header">
+              <label class="form-label" style="margin-bottom:0;">영향도 (Impact)</label>
+              <span class="slider-value" id="impactValue">3</span>
+            </div>
+            <input type="range" id="impactSlider" min="1" max="5" value="3" step="1" />
+            <div class="flex-between text-xs text-muted" style="margin-top:2px;">
+              <span>1 낮음</span><span>5 높음</span>
+            </div>
+          </div>
+          <div class="slider-group">
+            <div class="slider-header">
+              <label class="form-label" style="margin-bottom:0;">노력 (Effort)</label>
+              <span class="slider-value" id="effortValue">3</span>
+            </div>
+            <input type="range" id="effortSlider" min="1" max="5" value="3" step="1" />
+            <div class="flex-between text-xs text-muted" style="margin-top:2px;">
+              <span>1 낮음</span><span>5 높음</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <button class="btn btn-primary" id="addBtn">+ 항목 추가</button>
+      </div>
+    </div>
+
+    <!-- Items List -->
+    <div class="card fade-in" id="itemsCard" style="display:none;">
+      <div class="card-header flex-between">
+        <span>입력된 항목</span>
+        <span class="badge badge-primary" id="itemCount">0개</span>
+      </div>
+      <div class="card-body" style="padding:0;" id="itemsList"></div>
+      <div class="card-footer">
+        <button class="btn btn-danger btn-sm" id="clearAllBtn">전체 삭제</button>
+        <button class="btn btn-primary" id="analyzeBtn">분석 실행</button>
+      </div>
+    </div>
+
+    <!-- Analysis Section -->
+    <div id="analysisSection" style="display:none;">
+      <!-- Quadrant Summary -->
+      <div class="grid grid-4 mb-20 fade-in">
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-body metric">
+            <div class="metric-value text-success" id="qwCount">0</div>
+            <div class="metric-label">Quick Win</div>
+            <div class="metric-sub">높은 영향 / 낮은 노력</div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-body metric">
+            <div class="metric-value text-primary" id="stCount">0</div>
+            <div class="metric-label">Strategic</div>
+            <div class="metric-sub">높은 영향 / 높은 노력</div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-body metric">
+            <div class="metric-value text-warning" id="fiCount">0</div>
+            <div class="metric-label">Fill-in</div>
+            <div class="metric-sub">낮은 영향 / 낮은 노력</div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-body metric">
+            <div class="metric-value text-muted" id="dpCount">0</div>
+            <div class="metric-label">Deprioritize</div>
+            <div class="metric-sub">낮은 영향 / 높은 노력</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scatter Chart -->
+      <div class="card fade-in">
+        <div class="card-header flex-between">
+          <span>Impact × Effort 매트릭스</span>
+          <button class="btn btn-sm btn-secondary" id="downloadChartBtn">차트 저장</button>
+        </div>
+        <div class="card-body">
+          <div class="chart-container" style="max-height:500px;">
+            <canvas id="matrixChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Priority List -->
+      <div class="card fade-in">
+        <div class="card-header flex-between">
+          <span>우선순위 정렬 결과</span>
+          <button class="btn btn-sm btn-secondary" id="downloadCsvBtn">CSV 다운로드</button>
+        </div>
+        <div class="card-body" id="priorityList"></div>
+      </div>
+
+      <!-- Save -->
+      <div class="card fade-in">
+        <div class="card-footer" style="border-top:none;">
+          <button class="btn btn-primary" id="saveBtn">이력 저장</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- History Section -->
+    <div class="card fade-in mt-24">
+      <div class="card-header flex-between">
+        <span>측정 이력</span>
+        <button class="btn btn-sm btn-ghost" id="clearHistoryBtn">이력 초기화</button>
+      </div>
+      <div class="card-body" id="historyList">
+        <div class="empty-state">
+          <div class="empty-state-icon">📂</div>
+          <div class="empty-state-text">저장된 이력이 없습니다.</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../../shared/storage.js"></script>
+  <script>
+    // ── State ──
+    let items = [];
+    let matrixChart = null;
+
+    // ── DOM ──
+    const $ = id => document.getElementById(id);
+    const impactSlider = $('impactSlider');
+    const effortSlider = $('effortSlider');
+    const impactValue = $('impactValue');
+    const effortValue = $('effortValue');
+
+    // ── Slider labels ──
+    impactSlider.addEventListener('input', () => { impactValue.textContent = impactSlider.value; });
+    effortSlider.addEventListener('input', () => { effortValue.textContent = effortSlider.value; });
+
+    // ── Quadrant logic ──
+    function getQuadrant(impact, effort) {
+      if (impact >= 3 && effort < 3) return 'quick-win';
+      if (impact >= 3 && effort >= 3) return 'strategic';
+      if (impact < 3 && effort < 3) return 'fill-in';
+      return 'deprioritize';
+    }
+
+    function getQuadrantInfo(q) {
+      const map = {
+        'quick-win':    { label: 'Quick Win',    color: '#10B981', bg: '#D1FAE5', textColor: '#065F46', order: 0 },
+        'strategic':    { label: 'Strategic',    color: '#4F46E5', bg: '#DBEAFE', textColor: '#1E40AF', order: 1 },
+        'fill-in':      { label: 'Fill-in',      color: '#F59E0B', bg: '#FEF3C7', textColor: '#92400E', order: 2 },
+        'deprioritize': { label: 'Deprioritize', color: '#94A3B8', bg: '#F1F5F9', textColor: '#64748B', order: 3 },
+      };
+      return map[q];
+    }
+
+    // ── Add Item ──
+    $('addBtn').addEventListener('click', () => {
+      const name = $('itemName').value.trim();
+      if (!name) { $('itemName').focus(); return; }
+      items.push({
+        id: Date.now(),
+        name,
+        impact: parseInt(impactSlider.value),
+        effort: parseInt(effortSlider.value),
+      });
+      $('itemName').value = '';
+      impactSlider.value = 3; impactValue.textContent = '3';
+      effortSlider.value = 3; effortValue.textContent = '3';
+      $('itemName').focus();
+      renderItems();
+    });
+
+    // Enter key to add
+    $('itemName').addEventListener('keydown', e => {
+      if (e.key === 'Enter') $('addBtn').click();
+    });
+
+    // ── Render Items ──
+    function renderItems() {
+      const card = $('itemsCard');
+      const list = $('itemsList');
+      if (items.length === 0) {
+        card.style.display = 'none';
+        $('analysisSection').style.display = 'none';
+        return;
+      }
+      card.style.display = '';
+      $('itemCount').textContent = items.length + '개';
+      list.innerHTML = items.map(item => {
+        const q = getQuadrantInfo(getQuadrant(item.impact, item.effort));
+        return `<div class="item-row">
+          <span class="item-name">${escapeHtml(item.name)}</span>
+          <div class="item-scores">
+            <span>Impact: <strong>${item.impact}</strong></span>
+            <span>Effort: <strong>${item.effort}</strong></span>
+          </div>
+          <span class="badge" style="background:${q.bg};color:${q.textColor};">${q.label}</span>
+          <button class="btn btn-ghost btn-sm" onclick="removeItem(${item.id})" title="삭제">✕</button>
+        </div>`;
+      }).join('');
+    }
+
+    function removeItem(id) {
+      items = items.filter(i => i.id !== id);
+      renderItems();
+    }
+
+    $('clearAllBtn').addEventListener('click', () => {
+      if (!confirm('전체 항목을 삭제하시겠습니까?')) return;
+      items = [];
+      renderItems();
+    });
+
+    function escapeHtml(str) {
+      const d = document.createElement('div');
+      d.textContent = str;
+      return d.innerHTML;
+    }
+
+    // ── Analyze ──
+    $('analyzeBtn').addEventListener('click', analyze);
+
+    function analyze() {
+      if (items.length === 0) return;
+      $('analysisSection').style.display = '';
+
+      // Quadrant counts
+      const counts = { 'quick-win': 0, 'strategic': 0, 'fill-in': 0, 'deprioritize': 0 };
+      items.forEach(item => { counts[getQuadrant(item.impact, item.effort)]++; });
+      $('qwCount').textContent = counts['quick-win'];
+      $('stCount').textContent = counts['strategic'];
+      $('fiCount').textContent = counts['fill-in'];
+      $('dpCount').textContent = counts['deprioritize'];
+
+      renderChart();
+      renderPriorityList();
+      $('analysisSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ── Chart ──
+    function renderChart() {
+      if (matrixChart) matrixChart.destroy();
+
+      const datasets = [];
+      const quadrants = ['quick-win', 'strategic', 'fill-in', 'deprioritize'];
+
+      quadrants.forEach(q => {
+        const info = getQuadrantInfo(q);
+        const qItems = items.filter(i => getQuadrant(i.impact, i.effort) === q);
+        if (qItems.length === 0) return;
+        datasets.push({
+          label: info.label,
+          data: qItems.map(i => ({ x: i.effort, y: i.impact, name: i.name })),
+          backgroundColor: info.color + 'CC',
+          borderColor: info.color,
+          borderWidth: 2,
+          pointRadius: 8,
+          pointHoverRadius: 11,
+        });
+      });
+
+      // Quadrant background plugin
+      const quadrantBgPlugin = {
+        id: 'quadrantBackground',
+        beforeDraw(chart) {
+          const { ctx, chartArea: { left, right, top, bottom }, scales: { x, y } } = chart;
+          const midX = x.getPixelForValue(3);
+          const midY = y.getPixelForValue(3);
+
+          // Quick Win — top-left (green)
+          ctx.fillStyle = '#D1FAE520';
+          ctx.fillRect(left, top, midX - left, midY - top);
+
+          // Strategic — top-right (blue)
+          ctx.fillStyle = '#DBEAFE20';
+          ctx.fillRect(midX, top, right - midX, midY - top);
+
+          // Fill-in — bottom-left (yellow)
+          ctx.fillStyle = '#FEF3C720';
+          ctx.fillRect(left, midY, midX - left, bottom - midY);
+
+          // Deprioritize — bottom-right (gray)
+          ctx.fillStyle = '#F1F5F920';
+          ctx.fillRect(midX, midY, right - midX, bottom - midY);
+
+          // Dividing lines
+          ctx.strokeStyle = '#CBD5E180';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([6, 4]);
+          ctx.beginPath();
+          ctx.moveTo(midX, top); ctx.lineTo(midX, bottom);
+          ctx.moveTo(left, midY); ctx.lineTo(right, midY);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Quadrant labels
+          ctx.font = '12px system-ui, sans-serif';
+          ctx.fillStyle = '#94A3B8';
+          ctx.textAlign = 'center';
+          const pad = 16;
+          ctx.fillText('Quick Win', (left + midX) / 2, top + pad);
+          ctx.fillText('Strategic', (midX + right) / 2, top + pad);
+          ctx.fillText('Fill-in', (left + midX) / 2, bottom - pad + 4);
+          ctx.fillText('Deprioritize', (midX + right) / 2, bottom - pad + 4);
+        }
+      };
+
+      const ctx = $('matrixChart').getContext('2d');
+      matrixChart = new Chart(ctx, {
+        type: 'scatter',
+        data: { datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          aspectRatio: 1.3,
+          scales: {
+            x: {
+              title: { display: true, text: 'Effort (노력)', font: { size: 13, weight: '600' } },
+              min: 0.5, max: 5.5,
+              ticks: { stepSize: 1, callback: v => Number.isInteger(v) ? v : '' },
+              grid: { color: '#E2E8F040' },
+            },
+            y: {
+              title: { display: true, text: 'Impact (영향도)', font: { size: 13, weight: '600' } },
+              min: 0.5, max: 5.5,
+              ticks: { stepSize: 1, callback: v => Number.isInteger(v) ? v : '' },
+              grid: { color: '#E2E8F040' },
+            },
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label(ctx) {
+                  const d = ctx.raw;
+                  return `${d.name} — Impact: ${d.y}, Effort: ${d.x}`;
+                }
+              }
+            },
+            legend: {
+              position: 'bottom',
+              labels: { usePointStyle: true, padding: 16, font: { size: 13 } }
+            },
+            datalabels: false,
+          },
+        },
+        plugins: [quadrantBgPlugin, {
+          id: 'pointLabels',
+          afterDatasetsDraw(chart) {
+            const { ctx } = chart;
+            chart.data.datasets.forEach((ds, di) => {
+              const meta = chart.getDatasetMeta(di);
+              meta.data.forEach((point, pi) => {
+                const d = ds.data[pi];
+                ctx.font = '11px system-ui, sans-serif';
+                ctx.fillStyle = '#1E293B';
+                ctx.textAlign = 'center';
+                ctx.fillText(d.name, point.x, point.y - 14);
+              });
+            });
+          }
+        }],
+      });
+    }
+
+    // ── Priority List ──
+    function renderPriorityList() {
+      const sorted = [...items].map(item => ({
+        ...item,
+        quadrant: getQuadrant(item.impact, item.effort),
+      })).sort((a, b) => {
+        const oa = getQuadrantInfo(a.quadrant).order;
+        const ob = getQuadrantInfo(b.quadrant).order;
+        if (oa !== ob) return oa - ob;
+        // Within same quadrant: higher impact first, then lower effort
+        if (b.impact !== a.impact) return b.impact - a.impact;
+        return a.effort - b.effort;
+      });
+
+      $('priorityList').innerHTML = sorted.map((item, idx) => {
+        const info = getQuadrantInfo(item.quadrant);
+        return `<div class="priority-item" style="background:${info.bg};">
+          <span class="priority-rank" style="background:${info.color};">${idx + 1}</span>
+          <span style="flex:1;font-weight:500;color:${info.textColor};">${escapeHtml(item.name)}</span>
+          <span class="text-sm" style="color:${info.textColor};">Impact ${item.impact} · Effort ${item.effort}</span>
+          <span class="badge" style="background:${info.color}20;color:${info.textColor};">${info.label}</span>
+        </div>`;
+      }).join('');
+    }
+
+    // ── Download ──
+    $('downloadChartBtn').addEventListener('click', () => {
+      UXExport.downloadCanvas($('matrixChart'), 'priority-matrix.png');
+    });
+
+    $('downloadCsvBtn').addEventListener('click', () => {
+      const header = ['순위', '항목', 'Impact', 'Effort', '사분면'];
+      const sorted = [...items].map(item => ({
+        ...item,
+        quadrant: getQuadrant(item.impact, item.effort),
+      })).sort((a, b) => {
+        const oa = getQuadrantInfo(a.quadrant).order;
+        const ob = getQuadrantInfo(b.quadrant).order;
+        if (oa !== ob) return oa - ob;
+        if (b.impact !== a.impact) return b.impact - a.impact;
+        return a.effort - b.effort;
+      });
+      const rows = [header, ...sorted.map((item, idx) => [
+        idx + 1, item.name, item.impact, item.effort, getQuadrantInfo(item.quadrant).label
+      ])];
+      UXExport.downloadCSV(rows, 'priority-matrix.csv');
+    });
+
+    // ── Save ──
+    $('saveBtn').addEventListener('click', () => {
+      const label = $('projectLabel').value.trim() || '우선순위 분석 ' + UXDate.today();
+      const counts = { 'quick-win': 0, 'strategic': 0, 'fill-in': 0, 'deprioritize': 0 };
+      items.forEach(item => { counts[getQuadrant(item.impact, item.effort)]++; });
+      UXStorage.saveHistory('priority', label, {
+        items: items.map(i => ({ name: i.name, impact: i.impact, effort: i.effort })),
+        quadrantCounts: counts,
+        timestamp: new Date().toISOString(),
+      });
+      renderHistory();
+      alert('이력이 저장되었습니다.');
+    });
+
+    // ── History ──
+    function renderHistory() {
+      const history = UXStorage.getHistory('priority');
+      const el = $('historyList');
+      if (history.length === 0) {
+        el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📂</div><div class="empty-state-text">저장된 이력이 없습니다.</div></div>';
+        return;
+      }
+      el.innerHTML = history.map(h => {
+        const d = h.data;
+        const qc = d.quadrantCounts || {};
+        const total = (d.items || []).length;
+        return `<div class="history-item">
+          <div>
+            <strong>${escapeHtml(h.label)}</strong>
+            <div class="text-sm text-secondary mt-4">${UXDate.format(h.timestamp)} · ${total}개 항목</div>
+            <div class="flex gap-8 mt-4">
+              <span class="badge badge-success">QW ${qc['quick-win'] || 0}</span>
+              <span class="badge badge-primary">ST ${qc['strategic'] || 0}</span>
+              <span class="badge badge-warning">FI ${qc['fill-in'] || 0}</span>
+              <span class="badge badge-neutral">DP ${qc['deprioritize'] || 0}</span>
+            </div>
+          </div>
+          <div class="flex gap-8">
+            <button class="btn btn-sm btn-secondary" onclick="loadHistory('${h.id}')">불러오기</button>
+            <button class="btn btn-sm btn-ghost" onclick="deleteHistory('${h.id}')">삭제</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function loadHistory(id) {
+      const history = UXStorage.getHistory('priority');
+      const entry = history.find(h => h.id === id);
+      if (!entry) return;
+      $('projectLabel').value = entry.label;
+      items = (entry.data.items || []).map((i, idx) => ({
+        id: Date.now() + idx,
+        name: i.name,
+        impact: i.impact,
+        effort: i.effort,
+      }));
+      renderItems();
+      analyze();
+    }
+
+    function deleteHistory(id) {
+      if (!confirm('이 이력을 삭제하시겠습니까?')) return;
+      const history = UXStorage.getHistory('priority').filter(h => h.id !== id);
+      localStorage.setItem(UXStorage._key('priority', 'history'), JSON.stringify(history));
+      renderHistory();
+    }
+
+    $('clearHistoryBtn').addEventListener('click', () => {
+      if (!confirm('전체 이력을 초기화하시겠습니까?')) return;
+      UXStorage.clearModule('priority');
+      renderHistory();
+    });
+
+    // ── Init ──
+    renderHistory();
+  </script>
+</body>
+</html>

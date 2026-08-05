@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Five Second Test | UX Strategy Toolkit</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    .countdown-display {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--bg);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .countdown-display img {
+      max-width: 90vw;
+      max-height: 70vh;
+      object-fit: contain;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+    }
+    .countdown-timer {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      z-index: 1001;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface);
+      padding: 12px 24px;
+      border-radius: 999px;
+      box-shadow: var(--shadow-lg);
+      border: 2px solid var(--primary);
+    }
+    .countdown-number {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--primary);
+      font-variant-numeric: tabular-nums;
+      min-width: 36px;
+      text-align: center;
+    }
+    .countdown-label {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+    .countdown-progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 4px;
+      background: var(--primary);
+      z-index: 1002;
+      transition: width 1s linear;
+    }
+    .response-form .form-group {
+      margin-bottom: 20px;
+    }
+    .response-form .form-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .element-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 500;
+      margin: 3px;
+    }
+    .recall-high { background: var(--success-light); color: #065F46; }
+    .recall-mid { background: var(--warning-light); color: #92400E; }
+    .recall-low { background: var(--danger-light); color: #991B1B; }
+    .response-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+    .response-card-header {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .response-card-body {
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .section-step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 0;
+    }
+    .step-number {
+      width: 28px;
+      height: 28px;
+      background: var(--primary);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .step-label { font-weight: 600; font-size: 15px; }
+    .image-preview {
+      max-width: 100%;
+      max-height: 300px;
+      object-fit: contain;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="../../index.html" class="back-link">&larr; 돌아가기</a>
+  <h1>Five Second Test</h1>
+</nav>
+
+<div class="container">
+
+  <!-- Guide Section -->
+  <div class="card fade-in">
+    <div class="card-header">Five Second Test란?</div>
+    <div class="card-body">
+      <div class="guide-box">
+        <strong>UI 화면을 5초간 보여준 뒤, 사용자가 무엇을 기억하는지 확인하는 테스트입니다.</strong>
+        <ul>
+          <li>첫인상과 시각적 위계(Visual Hierarchy)를 검증합니다.</li>
+          <li>사용자가 5초 내에 핵심 요소를 인지하는지 확인합니다.</li>
+          <li>브랜드 메시지, CTA, 내비게이션 등의 가시성을 평가합니다.</li>
+          <li>키워드 빈도 분석을 통해 사용자의 인지 패턴을 파악합니다.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Setup Section -->
+  <div class="card fade-in" id="setupCard">
+    <div class="card-header">
+      <div class="section-step">
+        <span class="step-number">1</span>
+        <span class="step-label">테스트 설정</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="form-group">
+        <label class="form-label">테스트 이름</label>
+        <input type="text" class="input" id="testName" placeholder="예: 랜딩 페이지 첫인상 테스트">
+      </div>
+      <div class="form-group">
+        <label class="form-label">UI 스크린샷 업로드</label>
+        <div class="upload-zone" id="uploadZone">
+          <div class="upload-zone-icon">&#128444;</div>
+          <div class="upload-zone-text">이미지를 드래그하거나 클릭하여 업로드</div>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" class="hidden">
+      </div>
+
+      <div id="previewArea" class="hidden">
+        <div class="form-group">
+          <label class="form-label">업로드된 이미지</label>
+          <img id="previewImage" class="image-preview" src="" alt="Preview">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">핵심 요소 (선택사항, 쉼표로 구분)</label>
+        <input type="text" class="input" id="keyElements" placeholder="예: 로고, 검색바, 메인 버튼, 가격 정보">
+        <div class="text-sm text-secondary mt-4">응답에서 각 요소의 인지율을 자동으로 분석합니다.</div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <button class="btn btn-primary" id="startTestBtn" disabled>테스트 시작</button>
+    </div>
+  </div>
+
+  <!-- Test Section -->
+  <div class="card fade-in hidden" id="testCard">
+    <div class="card-header">
+      <div class="section-step">
+        <span class="step-number">2</span>
+        <span class="step-label">테스트 진행</span>
+      </div>
+      <div style="margin-left: auto;">
+        <span class="badge badge-primary" id="participantBadge">0명 참가</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <!-- Pre-show state -->
+      <div id="preShowState">
+        <div class="alert alert-info mb-16">
+          참가자가 준비되면 "화면 보여주기" 버튼을 클릭하세요. 5초간 UI 화면이 표시된 후 자동으로 사라집니다.
+        </div>
+        <div class="flex gap-8">
+          <button class="btn btn-primary btn-lg" id="showImageBtn">화면 보여주기 (5초)</button>
+          <button class="btn btn-success" id="showResultsBtn" disabled style="margin-left: auto;">결과 보기</button>
+        </div>
+      </div>
+
+      <!-- Response form (shown after 5 seconds) -->
+      <div id="responseState" class="hidden">
+        <div class="alert alert-warning mb-16">
+          화면이 사라졌습니다. 아래 질문에 응답해 주세요.
+        </div>
+        <div class="response-form">
+          <div class="form-group">
+            <label class="form-label">방금 본 화면에서 무엇이 기억나시나요?</label>
+            <textarea class="textarea" id="recallAnswer" rows="4" placeholder="기억나는 요소, 텍스트, 색상, 위치 등을 자유롭게 작성해 주세요."></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">가장 먼저 눈에 들어온 것은?</label>
+            <input type="text" class="input" id="firstNotice" placeholder="예: 상단의 큰 배너 이미지">
+          </div>
+          <div class="form-group">
+            <label class="form-label">이 화면의 목적이 무엇이라고 생각하시나요?</label>
+            <input type="text" class="input" id="purposeAnswer" placeholder="예: 제품을 구매하는 쇼핑몰 페이지">
+          </div>
+        </div>
+        <div class="flex gap-8">
+          <button class="btn btn-primary" id="submitResponseBtn">응답 제출</button>
+          <button class="btn" id="skipResponseBtn">건너뛰기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Countdown Display (fullscreen overlay) -->
+  <div id="countdownDisplay" class="countdown-display hidden">
+    <div class="countdown-progress" id="countdownProgress"></div>
+    <div class="countdown-timer">
+      <span class="countdown-number" id="countdownNumber">5</span>
+      <span class="countdown-label">초 남음</span>
+    </div>
+    <img id="countdownImage" src="" alt="Test Image">
+  </div>
+
+  <!-- Results Section -->
+  <div class="card fade-in hidden" id="resultsCard">
+    <div class="card-header">
+      <div class="section-step">
+        <span class="step-number">3</span>
+        <span class="step-label">결과 분석</span>
+      </div>
+      <div style="margin-left: auto;">
+        <button class="btn btn-sm" id="exportDataBtn">데이터 내보내기</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <!-- Metrics -->
+      <div class="grid grid-2 mb-20">
+        <div class="card">
+          <div class="metric">
+            <div class="metric-value" id="totalParticipants">0</div>
+            <div class="metric-label">총 참가자</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="metric">
+            <div class="metric-value" id="totalKeywords">0</div>
+            <div class="metric-label">추출된 키워드</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Key Element Recall -->
+      <div id="recallSection" class="hidden mb-20">
+        <div class="card">
+          <div class="card-header">핵심 요소 인지율</div>
+          <div class="card-body">
+            <div id="recallTags" class="mb-12"></div>
+            <div class="chart-container" style="max-height: 300px;">
+              <canvas id="recallChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Keyword Frequency -->
+      <div class="card mb-20">
+        <div class="card-header">키워드 빈도 분석 (Top 15)</div>
+        <div class="card-body">
+          <div class="chart-container" style="max-height: 400px;">
+            <canvas id="keywordChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- First Notice Responses -->
+      <div class="card mb-20">
+        <div class="card-header">가장 먼저 눈에 들어온 것</div>
+        <div class="card-body">
+          <div id="firstNoticeList"></div>
+        </div>
+      </div>
+
+      <!-- Purpose Responses -->
+      <div class="card mb-20">
+        <div class="card-header">화면 목적 해석</div>
+        <div class="card-body">
+          <div id="purposeList"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <button class="btn btn-secondary" id="backToTestBtn">테스트로 돌아가기</button>
+      <button class="btn btn-primary" id="newTestBtn">새 테스트</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="../../shared/storage.js"></script>
+<script>
+(function() {
+  'use strict';
+
+  // State
+  let imageDataURL = null;
+  let keyElementsList = [];
+  let responses = []; // [{recall, firstNotice, purpose}]
+  let countdownInterval = null;
+  let keywordChartInstance = null;
+  let recallChartInstance = null;
+
+  // Korean stop words (particles, common verbs, etc.)
+  const STOP_WORDS = new Set([
+    '은','는','이','가','을','를','에','의','로','와','과','도','만','에서','으로',
+    '하고','하는','것','수','그','저','이','한','할','합','하','됨','있','없',
+    '그리고','또는','하지만','그래서','위에','아래','같은','대한','통해','대해',
+    '것이','있는','없는','하는','되는','된','했','한다','했다','있다','없다',
+    '더','좀','잘','매우','정말','아주','다','등','및','중','때','후','전',
+    '위','밑','옆','안','밖','속','쪽','곳','데','줄','때문','위해','따라',
+    '이런','저런','그런','어떤','모든','각','몇','다른','같이','처럼','보다',
+    '부터','까지','마다','라도','든지','거나','니까','면서','지만','아서','어서',
+    '고','게','를','을','나','내','네','거','걸','건','볼','본','보','봤',
+    '좌측','우측','상단','하단','왼쪽','오른쪽','위쪽','아래쪽',
+    '있었','했던','있던','느낌','정도','가장','먼저','약간','조금',
+    '듯','듯한','란','라는','라고','다고','로서','서','며',
+    '뭔가','어떤','누구','무엇','언제','어디','왜','어떻게'
+  ]);
+
+  // DOM elements
+  const uploadZone = document.getElementById('uploadZone');
+  const fileInput = document.getElementById('fileInput');
+  const previewArea = document.getElementById('previewArea');
+  const previewImage = document.getElementById('previewImage');
+  const startTestBtn = document.getElementById('startTestBtn');
+  const testNameInput = document.getElementById('testName');
+  const keyElementsInput = document.getElementById('keyElements');
+  const setupCard = document.getElementById('setupCard');
+  const testCard = document.getElementById('testCard');
+  const resultsCard = document.getElementById('resultsCard');
+  const participantBadge = document.getElementById('participantBadge');
+
+  const preShowState = document.getElementById('preShowState');
+  const responseState = document.getElementById('responseState');
+  const showImageBtn = document.getElementById('showImageBtn');
+  const showResultsBtn = document.getElementById('showResultsBtn');
+
+  const countdownDisplay = document.getElementById('countdownDisplay');
+  const countdownImage = document.getElementById('countdownImage');
+  const countdownNumber = document.getElementById('countdownNumber');
+  const countdownProgress = document.getElementById('countdownProgress');
+
+  const recallAnswer = document.getElementById('recallAnswer');
+  const firstNotice = document.getElementById('firstNotice');
+  const purposeAnswer = document.getElementById('purposeAnswer');
+  const submitResponseBtn = document.getElementById('submitResponseBtn');
+  const skipResponseBtn = document.getElementById('skipResponseBtn');
+
+  // ── File Upload ──
+  uploadZone.addEventListener('click', () => fileInput.click());
+
+  uploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadZone.classList.add('dragover');
+  });
+  uploadZone.addEventListener('dragleave', () => {
+    uploadZone.classList.remove('dragover');
+  });
+  uploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) loadImage(file);
+  });
+
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) loadImage(file);
+  });
+
+  function loadImage(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      imageDataURL = e.target.result;
+      previewImage.src = imageDataURL;
+      previewArea.classList.remove('hidden');
+      uploadZone.innerHTML = '<div class="upload-zone-icon">&#9989;</div><div class="upload-zone-text">이미지 업로드 완료 (클릭하여 변경)</div>';
+      checkStartReady();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ── Validation ──
+  function checkStartReady() {
+    startTestBtn.disabled = !(testNameInput.value.trim() && imageDataURL);
+  }
+  testNameInput.addEventListener('input', checkStartReady);
+
+  // ── Start Test ──
+  startTestBtn.addEventListener('click', () => {
+    // Parse key elements
+    const raw = keyElementsInput.value.trim();
+    keyElementsList = raw ? raw.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+    setupCard.classList.add('hidden');
+    testCard.classList.remove('hidden');
+    responses = [];
+    updateParticipantCount();
+  });
+
+  // ── Show Image (5 seconds) ──
+  showImageBtn.addEventListener('click', () => {
+    countdownImage.src = imageDataURL;
+    countdownDisplay.classList.remove('hidden');
+    countdownNumber.textContent = '5';
+    countdownProgress.style.width = '0%';
+
+    // Force reflow for transition
+    void countdownProgress.offsetWidth;
+
+    let seconds = 5;
+
+    // Animate progress bar
+    requestAnimationFrame(() => {
+      countdownProgress.style.width = '100%';
+      countdownProgress.style.transition = 'width 5s linear';
+    });
+
+    countdownInterval = setInterval(() => {
+      seconds--;
+      countdownNumber.textContent = seconds;
+
+      if (seconds <= 0) {
+        clearInterval(countdownInterval);
+        countdownDisplay.classList.add('hidden');
+        countdownProgress.style.transition = 'none';
+        countdownProgress.style.width = '0%';
+
+        // Show response form
+        preShowState.classList.add('hidden');
+        responseState.classList.remove('hidden');
+        recallAnswer.value = '';
+        firstNotice.value = '';
+        purposeAnswer.value = '';
+        recallAnswer.focus();
+      }
+    }, 1000);
+  });
+
+  // ── Submit Response ──
+  submitResponseBtn.addEventListener('click', () => {
+    const resp = {
+      recall: recallAnswer.value.trim(),
+      firstNotice: firstNotice.value.trim(),
+      purpose: purposeAnswer.value.trim()
+    };
+
+    if (!resp.recall && !resp.firstNotice && !resp.purpose) {
+      recallAnswer.style.borderColor = 'var(--danger)';
+      setTimeout(() => { recallAnswer.style.borderColor = ''; }, 2000);
+      return;
+    }
+
+    responses.push(resp);
+    updateParticipantCount();
+    resetForNextParticipant();
+  });
+
+  skipResponseBtn.addEventListener('click', () => {
+    resetForNextParticipant();
+  });
+
+  function resetForNextParticipant() {
+    responseState.classList.add('hidden');
+    preShowState.classList.remove('hidden');
+    showResultsBtn.disabled = responses.length === 0;
+  }
+
+  function updateParticipantCount() {
+    participantBadge.textContent = responses.length + '명 참가';
+    showResultsBtn.disabled = responses.length === 0;
+  }
+
+  // ── Results ──
+  showResultsBtn.addEventListener('click', () => {
+    testCard.classList.add('hidden');
+    resultsCard.classList.remove('hidden');
+    renderResults();
+    saveData();
+  });
+
+  document.getElementById('backToTestBtn').addEventListener('click', () => {
+    resultsCard.classList.add('hidden');
+    testCard.classList.remove('hidden');
+  });
+
+  document.getElementById('newTestBtn').addEventListener('click', () => {
+    resultsCard.classList.add('hidden');
+    setupCard.classList.remove('hidden');
+    imageDataURL = null;
+    keyElementsList = [];
+    responses = [];
+    testNameInput.value = '';
+    keyElementsInput.value = '';
+    previewArea.classList.add('hidden');
+    uploadZone.innerHTML = '<div class="upload-zone-icon">&#128444;</div><div class="upload-zone-text">이미지를 드래그하거나 클릭하여 업로드</div>';
+    startTestBtn.disabled = true;
+    fileInput.value = '';
+    if (keywordChartInstance) { keywordChartInstance.destroy(); keywordChartInstance = null; }
+    if (recallChartInstance) { recallChartInstance.destroy(); recallChartInstance = null; }
+  });
+
+  function renderResults() {
+    // Metrics
+    document.getElementById('totalParticipants').textContent = responses.length;
+
+    // Keyword analysis
+    const keywordFreq = analyzeKeywords();
+    document.getElementById('totalKeywords').textContent = Object.keys(keywordFreq).length;
+    renderKeywordChart(keywordFreq);
+
+    // Key element recall
+    if (keyElementsList.length > 0) {
+      const recallRates = analyzeRecall();
+      renderRecallSection(recallRates);
+    } else {
+      document.getElementById('recallSection').classList.add('hidden');
+    }
+
+    // First notice list
+    renderResponseList('firstNoticeList', responses.map(r => r.firstNotice).filter(Boolean), '가장 먼저 눈에 들어온 것');
+
+    // Purpose list
+    renderResponseList('purposeList', responses.map(r => r.purpose).filter(Boolean), '화면 목적 해석');
+  }
+
+  function analyzeKeywords() {
+    const freq = {};
+    const allText = responses.map(r => r.recall).join(' ');
+
+    // Tokenize: split on spaces, punctuation, etc.
+    const tokens = allText
+      .replace(/[.,!?;:'"()\[\]{}<>\/\\@#$%^&*+=~`|_\-\d]/g, ' ')
+      .split(/\s+/)
+      .map(t => t.trim())
+      .filter(t => t.length >= 2 && !STOP_WORDS.has(t));
+
+    tokens.forEach(t => {
+      const lower = t.toLowerCase();
+      freq[lower] = (freq[lower] || 0) + 1;
+    });
+
+    return freq;
+  }
+
+  function analyzeRecall() {
+    const rates = {};
+    keyElementsList.forEach(element => {
+      const el = element.toLowerCase();
+      let count = 0;
+      responses.forEach(r => {
+        const text = (r.recall + ' ' + r.firstNotice + ' ' + r.purpose).toLowerCase();
+        if (text.includes(el)) count++;
+      });
+      rates[element] = {
+        count,
+        total: responses.length,
+        rate: responses.length > 0 ? Math.round((count / responses.length) * 100) : 0
+      };
+    });
+    return rates;
+  }
+
+  function renderKeywordChart(freq) {
+    const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 15);
+
+    if (sorted.length === 0) {
+      const canvas = document.getElementById('keywordChart');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
+
+    const labels = sorted.map(e => e[0]);
+    const data = sorted.map(e => e[1]);
+
+    if (keywordChartInstance) keywordChartInstance.destroy();
+
+    keywordChartInstance = new Chart(document.getElementById('keywordChart'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: '언급 횟수',
+          data,
+          backgroundColor: UXColors.palette[0] + '33',
+          borderColor: UXColors.palette[0],
+          borderWidth: 1,
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => ctx.parsed.x + '회 언급'
+            }
+          }
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            ticks: { stepSize: 1, font: { size: 12 } },
+            grid: { color: '#E2E8F022' }
+          },
+          y: {
+            ticks: { font: { size: 13 } },
+            grid: { display: false }
+          }
+        }
+      }
+    });
+  }
+
+  function renderRecallSection(rates) {
+    const section = document.getElementById('recallSection');
+    section.classList.remove('hidden');
+
+    // Tags
+    const tagsContainer = document.getElementById('recallTags');
+    tagsContainer.innerHTML = Object.entries(rates).map(([el, data]) => {
+      let cls = 'recall-low';
+      if (data.rate >= 70) cls = 'recall-high';
+      else if (data.rate >= 40) cls = 'recall-mid';
+      return `<span class="element-tag ${cls}">${el} <strong>${data.rate}%</strong></span>`;
+    }).join('');
+
+    // Chart
+    const labels = Object.keys(rates);
+    const data = labels.map(l => rates[l].rate);
+    const colors = data.map(v => v >= 70 ? UXColors.success : v >= 40 ? UXColors.warning : UXColors.danger);
+
+    if (recallChartInstance) recallChartInstance.destroy();
+
+    recallChartInstance = new Chart(document.getElementById('recallChart'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: '인지율 (%)',
+          data,
+          backgroundColor: colors.map(c => c + '33'),
+          borderColor: colors,
+          borderWidth: 1,
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const el = labels[ctx.dataIndex];
+                const r = rates[el];
+                return `${r.count}/${r.total}명 (${r.rate}%)`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            max: 100,
+            ticks: { callback: v => v + '%', font: { size: 12 } },
+            grid: { color: '#E2E8F022' }
+          },
+          y: {
+            ticks: { font: { size: 13 } },
+            grid: { display: false }
+          }
+        }
+      }
+    });
+  }
+
+  function renderResponseList(containerId, items, title) {
+    const container = document.getElementById(containerId);
+    if (items.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-text">응답이 없습니다.</div></div>';
+      return;
+    }
+    container.innerHTML = items.map((item, i) => `
+      <div class="response-card">
+        <div class="response-card-header">참가자 ${i + 1}</div>
+        <div class="response-card-body">${escapeHtml(item)}</div>
+      </div>
+    `).join('');
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // ── Export ──
+  document.getElementById('exportDataBtn').addEventListener('click', () => {
+    const rows = [['참가자', '기억나는 것', '가장 먼저 눈에 들어온 것', '화면 목적 해석']];
+    responses.forEach((r, i) => {
+      rows.push([i + 1, r.recall, r.firstNotice, r.purpose]);
+    });
+    UXExport.downloadCSV(rows, `five-second-data-${Date.now()}.csv`);
+  });
+
+  // ── Save ──
+  function saveData() {
+    const label = testNameInput.value.trim() || 'Five Second Test';
+    const keywordFreq = analyzeKeywords();
+    let recallRates = null;
+    if (keyElementsList.length > 0) {
+      recallRates = analyzeRecall();
+    }
+    UXStorage.saveHistory('five-second', label, {
+      responses: responses.map(r => ({
+        recall: r.recall,
+        firstNotice: r.firstNotice,
+        purpose: r.purpose
+      })),
+      keyElements: keyElementsList,
+      recallRates,
+      keywordFreq,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+})();
+</script>
+
+</body>
+</html>
