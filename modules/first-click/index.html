@@ -168,6 +168,27 @@
     </div>
   </div>
 
+  <!-- Template Section -->
+  <div class="card fade-in">
+    <div class="card-header">📁 템플릿</div>
+    <div class="card-body">
+      <div class="flex-between">
+        <div class="flex gap-8" style="flex:1; align-items:center;">
+          <select class="select" id="templateSelect" style="max-width:300px;">
+            <option value="">저장된 템플릿 선택...</option>
+          </select>
+          <button class="btn btn-sm btn-secondary" id="loadTemplateBtn" disabled>불러오기</button>
+          <button class="btn btn-sm btn-danger" id="deleteTemplateBtn" disabled>삭제</button>
+        </div>
+        <div class="flex gap-8">
+          <input type="text" class="input input-sm" id="templateName" placeholder="템플릿 이름" style="width:180px;">
+          <button class="btn btn-sm btn-primary" id="saveTemplateBtn">저장</button>
+        </div>
+      </div>
+      <div class="text-sm text-secondary mt-4">이미지는 템플릿에 포함되지 않습니다</div>
+    </div>
+  </div>
+
   <!-- Setup Section -->
   <div class="card fade-in" id="setupCard">
     <div class="card-header">
@@ -807,6 +828,89 @@
       timestamp: new Date().toISOString()
     });
   }
+
+  // ── Templates ──
+  const templateSelect = document.getElementById('templateSelect');
+  const loadTemplateBtn = document.getElementById('loadTemplateBtn');
+  const deleteTemplateBtn = document.getElementById('deleteTemplateBtn');
+  const templateNameInput = document.getElementById('templateName');
+  const saveTemplateBtn = document.getElementById('saveTemplateBtn');
+
+  function refreshTemplateList() {
+    const templates = UXStorage.getTemplates('first-click');
+    templateSelect.innerHTML = '<option value="">저장된 템플릿 선택...</option>';
+    templates.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.id;
+      opt.textContent = t.name + ' (' + UXDate.format(t.createdAt) + ')';
+      templateSelect.appendChild(opt);
+    });
+    templateSelect.value = '';
+    loadTemplateBtn.disabled = true;
+    deleteTemplateBtn.disabled = true;
+  }
+
+  templateSelect.addEventListener('change', () => {
+    const hasVal = !!templateSelect.value;
+    loadTemplateBtn.disabled = !hasVal;
+    deleteTemplateBtn.disabled = !hasVal;
+  });
+
+  saveTemplateBtn.addEventListener('click', () => {
+    const name = templateNameInput.value.trim();
+    if (!name) { templateNameInput.style.borderColor = 'var(--danger)'; setTimeout(() => { templateNameInput.style.borderColor = ''; }, 2000); return; }
+    const data = {
+      testName: testName.value.trim(),
+      taskDesc: taskDesc.value.trim(),
+      correctZone: correctZone
+    };
+    UXStorage.saveTemplate('first-click', name, data);
+    templateNameInput.value = '';
+    refreshTemplateList();
+  });
+
+  loadTemplateBtn.addEventListener('click', () => {
+    const id = templateSelect.value;
+    if (!id) return;
+    const tpl = UXStorage.loadTemplate('first-click', id);
+    if (!tpl) return;
+    const d = tpl.data;
+    testName.value = d.testName || '';
+    taskDesc.value = d.taskDesc || '';
+    if (d.correctZone) {
+      correctZone = d.correctZone;
+      correctZoneRect.classList.remove('hidden');
+      correctZoneRect.style.left = correctZone.x + '%';
+      correctZoneRect.style.top = correctZone.y + '%';
+      correctZoneRect.style.width = correctZone.w + '%';
+      correctZoneRect.style.height = correctZone.h + '%';
+      drawingHint.classList.add('hidden');
+      resetZoneBtn.disabled = false;
+      zoneStatus.textContent = '정답 영역이 설정되었습니다 (템플릿)';
+      zoneStatus.style.color = 'var(--success)';
+    } else {
+      correctZone = null;
+      correctZoneRect.classList.add('hidden');
+      drawingHint.classList.remove('hidden');
+      resetZoneBtn.disabled = true;
+      zoneStatus.textContent = '정답 영역 미설정';
+      zoneStatus.style.color = '';
+    }
+    checkStartReady();
+    if (!imageDataURL) {
+      alert('이미지를 다시 업로드해 주세요. (이미지는 템플릿에 포함되지 않습니다)');
+    }
+  });
+
+  deleteTemplateBtn.addEventListener('click', () => {
+    const id = templateSelect.value;
+    if (!id) return;
+    UXStorage.deleteTemplate('first-click', id);
+    refreshTemplateList();
+  });
+
+  // Initialize template list on load
+  refreshTemplateList();
 
 })();
 </script>

@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A/B 테스트 분석기 — UX Strategy Toolkit</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    .variant-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 20px;
+      background: var(--surface);
+    }
+    .variant-card h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .variant-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .variant-dot-a { background: #4F46E5; }
+    .variant-dot-b { background: #0EA5E9; }
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .result-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 20px;
+      background: var(--surface);
+      text-align: center;
+    }
+    .result-card.winner {
+      border-color: var(--success);
+      background: var(--success-light);
+    }
+    .result-rate {
+      font-size: 32px;
+      font-weight: 700;
+      margin: 8px 0 4px;
+    }
+    .result-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .result-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .diff-banner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 16px 24px;
+      border-radius: var(--radius-sm);
+      background: var(--primary-light);
+      border: 1px solid #C7D2FE;
+      margin: 16px 0;
+      flex-wrap: wrap;
+    }
+    .diff-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .diff-detail {
+      font-size: 14px;
+      color: #3730A3;
+    }
+    .stat-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .stat-table th {
+      text-align: left;
+      padding: 10px 12px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+    .stat-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .stat-table tr:last-child td { border-bottom: none; }
+    .verdict-box {
+      padding: 20px 24px;
+      border-radius: var(--radius);
+      font-size: 15px;
+      line-height: 1.7;
+      margin-top: 16px;
+    }
+    .verdict-box.significant {
+      background: var(--success-light);
+      border: 1px solid var(--success);
+      color: #065F46;
+    }
+    .verdict-box.not-significant {
+      background: var(--warning-light);
+      border: 1px solid var(--warning);
+      color: #92400E;
+    }
+    .verdict-title {
+      font-weight: 700;
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+    .sample-info {
+      margin-top: 12px;
+      padding: 14px 16px;
+      background: var(--bg);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    .history-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .history-item:last-child { border-bottom: none; }
+    @media (max-width: 768px) {
+      .result-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="../../index.html" class="back-link">&larr; 돌아가기</a>
+    <h1>A/B 테스트 분석기</h1>
+  </nav>
+
+  <main class="container">
+    <!-- Guide -->
+    <div class="guide-box mb-20 fade-in">
+      <strong>A/B 테스트 분석이란?</strong>
+      <p class="mt-4">두 가지 변형(A vs B)을 <strong>통계적으로 비교</strong>하여 어느 쪽이 더 우수한지 판별하는 분석 방법입니다.</p>
+      <ul>
+        <li><strong>통계적 유의성</strong>: 관찰된 차이가 우연이 아닌 실제 차이인지 판단합니다.</li>
+        <li><strong>신뢰수준</strong>: 결론이 틀릴 확률의 상한선입니다. 95%는 오류 확률이 5% 이하임을 의미합니다.</li>
+        <li><strong>p-value</strong>: 귀무가설(차이 없음)이 참일 때 관찰된 결과가 나올 확률입니다. 낮을수록 유의미합니다.</li>
+        <li>전환율(Conversion Rate) 비교와 평균값(Mean) 비교 두 가지 모드를 지원합니다.</li>
+      </ul>
+    </div>
+
+    <!-- Template -->
+    <div class="card fade-in">
+      <div class="card-header">&#128193; 템플릿</div>
+      <div class="card-body">
+        <div class="flex-between">
+          <div class="flex gap-8" style="flex:1; align-items:center;">
+            <select class="select" id="templateSelect" style="max-width:300px;">
+              <option value="">저장된 템플릿 선택...</option>
+            </select>
+            <button class="btn btn-sm btn-secondary" id="loadTemplateBtn" disabled>불러오기</button>
+            <button class="btn btn-sm btn-danger" id="deleteTemplateBtn" disabled>삭제</button>
+          </div>
+          <div class="flex gap-8">
+            <input type="text" class="input input-sm" id="templateName" placeholder="템플릿 이름" style="width:180px;">
+            <button class="btn btn-sm btn-primary" id="saveTemplateBtn">저장</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="card mt-16 fade-in">
+      <div class="card-header">&#9881;&#65039; 테스트 설정</div>
+      <div class="card-body">
+        <div class="form-group mb-12">
+          <label class="form-label">테스트 이름</label>
+          <input type="text" class="input" id="testLabel" placeholder="예: 결제 버튼 색상 변경 테스트">
+        </div>
+
+        <div class="grid grid-2 mb-12" style="gap:16px;">
+          <div class="form-group">
+            <label class="form-label">테스트 유형</label>
+            <select class="select" id="testType">
+              <option value="conversion">전환율 비교 (Conversion Rate)</option>
+              <option value="mean">평균값 비교 (Mean Comparison)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">신뢰수준</label>
+            <select class="select" id="confidence">
+              <option value="0.90">90%</option>
+              <option value="0.95" selected>95%</option>
+              <option value="0.99">99%</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="grid grid-2 mt-16" style="gap:16px;">
+          <!-- Variant A -->
+          <div class="variant-card">
+            <h3><span class="variant-dot variant-dot-a"></span> Variant A (대조군)</h3>
+            <div class="form-group mb-12">
+              <label class="form-label">이름</label>
+              <input type="text" class="input input-sm" id="nameA" placeholder="예: 현행 디자인" value="Control">
+            </div>
+            <div class="form-group mb-12" id="visitorsGroupA">
+              <label class="form-label">방문자 수 (표본 크기)</label>
+              <input type="number" class="input input-sm" id="visitorsA" placeholder="예: 1000" min="1">
+            </div>
+            <div class="form-group" id="conversionsGroupA">
+              <label class="form-label">전환 수</label>
+              <input type="number" class="input input-sm" id="conversionsA" placeholder="예: 45" min="0">
+            </div>
+            <div class="form-group mb-12 hidden" id="sampleGroupA">
+              <label class="form-label">표본 크기</label>
+              <input type="number" class="input input-sm" id="sampleA" placeholder="예: 50" min="2">
+            </div>
+            <div class="form-group mb-12 hidden" id="meanGroupA">
+              <label class="form-label">평균</label>
+              <input type="number" class="input input-sm" id="meanA" placeholder="예: 72.5" step="any">
+            </div>
+            <div class="form-group hidden" id="sdGroupA">
+              <label class="form-label">표준편차</label>
+              <input type="number" class="input input-sm" id="sdA" placeholder="예: 12.3" step="any" min="0">
+            </div>
+          </div>
+
+          <!-- Variant B -->
+          <div class="variant-card">
+            <h3><span class="variant-dot variant-dot-b"></span> Variant B (실험군)</h3>
+            <div class="form-group mb-12">
+              <label class="form-label">이름</label>
+              <input type="text" class="input input-sm" id="nameB" placeholder="예: 새 디자인" value="Variation">
+            </div>
+            <div class="form-group mb-12" id="visitorsGroupB">
+              <label class="form-label">방문자 수 (표본 크기)</label>
+              <input type="number" class="input input-sm" id="visitorsB" placeholder="예: 1000" min="1">
+            </div>
+            <div class="form-group" id="conversionsGroupB">
+              <label class="form-label">전환 수</label>
+              <input type="number" class="input input-sm" id="conversionsB" placeholder="예: 62" min="0">
+            </div>
+            <div class="form-group mb-12 hidden" id="sampleGroupB">
+              <label class="form-label">표본 크기</label>
+              <input type="number" class="input input-sm" id="sampleB" placeholder="예: 50" min="2">
+            </div>
+            <div class="form-group mb-12 hidden" id="meanGroupB">
+              <label class="form-label">평균</label>
+              <input type="number" class="input input-sm" id="meanB" placeholder="예: 78.1" step="any">
+            </div>
+            <div class="form-group hidden" id="sdGroupB">
+              <label class="form-label">표준편차</label>
+              <input type="number" class="input input-sm" id="sdB" placeholder="예: 11.8" step="any" min="0">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer" style="text-align:right;">
+        <button class="btn btn-secondary" id="resetBtn" style="margin-right:8px;">초기화</button>
+        <button class="btn btn-primary" id="analyzeBtn">분석</button>
+      </div>
+    </div>
+
+    <!-- Results (hidden initially) -->
+    <div id="resultsSection" class="hidden">
+      <div class="card mt-16 fade-in">
+        <div class="card-header">&#128202; 분석 결과</div>
+        <div class="card-body">
+          <!-- Rate comparison -->
+          <div class="result-grid" id="resultCards"></div>
+
+          <!-- Difference banner -->
+          <div class="diff-banner" id="diffBanner"></div>
+
+          <!-- Chart -->
+          <div class="chart-container" style="max-height:320px; margin:16px 0;">
+            <canvas id="comparisonChart"></canvas>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Statistical details -->
+          <h3 style="font-size:15px; font-weight:600; margin:16px 0 12px;">통계 검정 결과</h3>
+          <table class="stat-table" id="statTable">
+            <tbody></tbody>
+          </table>
+
+          <!-- Verdict -->
+          <div id="verdictBox"></div>
+
+          <!-- Required sample size -->
+          <div class="sample-info" id="sampleInfo"></div>
+        </div>
+        <div class="card-footer" style="text-align:right;">
+          <button class="btn btn-sm btn-secondary" id="exportCsvBtn">CSV 내보내기</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="card mt-16 fade-in">
+      <div class="card-header flex-between">
+        <span>&#128203; 분석 이력</span>
+        <button class="btn btn-sm btn-danger" id="clearHistoryBtn" style="display:none;">전체 삭제</button>
+      </div>
+      <div class="card-body" id="historyList">
+        <div class="empty-state">저장된 분석 이력이 없습니다.</div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../../shared/storage.js"></script>
+  <script>
+  (function() {
+    'use strict';
+
+    /* ── DOM refs ── */
+    const $ = id => document.getElementById(id);
+    const testType = $('testType');
+    const confidence = $('confidence');
+    const testLabel = $('testLabel');
+    const analyzeBtn = $('analyzeBtn');
+    const resetBtn = $('resetBtn');
+    const resultsSection = $('resultsSection');
+
+    // Conversion fields
+    const conversionFields = ['visitorsGroupA','conversionsGroupA','visitorsGroupB','conversionsGroupB'];
+    // Mean fields
+    const meanFields = ['sampleGroupA','meanGroupA','sdGroupA','sampleGroupB','meanGroupB','sdGroupB'];
+
+    /* ── Test type toggle ── */
+    testType.addEventListener('change', toggleTestType);
+    function toggleTestType() {
+      const isConversion = testType.value === 'conversion';
+      conversionFields.forEach(id => $(id).classList.toggle('hidden', !isConversion));
+      meanFields.forEach(id => $(id).classList.toggle('hidden', isConversion));
+    }
+
+    /* ── Statistical functions ── */
+    function normalCDF(x) {
+      const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
+      const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
+      const sign = x < 0 ? -1 : 1;
+      x = Math.abs(x) / Math.sqrt(2);
+      const t = 1.0 / (1.0 + p * x);
+      const y = 1.0 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t * Math.exp(-x*x);
+      return 0.5 * (1.0 + sign * y);
+    }
+
+    function getZAlpha(conf) {
+      const map = { '0.90': 1.645, '0.95': 1.96, '0.99': 2.576 };
+      return map[String(conf)] || 1.96;
+    }
+
+    function twoProportionZTest(nA, cA, nB, cB, conf) {
+      const p1 = cA / nA;
+      const p2 = cB / nB;
+      const pPool = (cA + cB) / (nA + nB);
+      const SE = Math.sqrt(pPool * (1 - pPool) * (1/nA + 1/nB));
+      const z = SE === 0 ? 0 : (p1 - p2) / SE;
+      const pValue = 2 * (1 - normalCDF(Math.abs(z)));
+      const zAlpha = getZAlpha(conf);
+      const significant = pValue < (1 - conf);
+
+      // Confidence interval for difference
+      const seDiff = Math.sqrt(p1*(1-p1)/nA + p2*(1-p2)/nB);
+      const ciLow = (p1 - p2) - zAlpha * seDiff;
+      const ciHigh = (p1 - p2) + zAlpha * seDiff;
+
+      // Required sample size
+      const zBeta = 0.84; // 80% power
+      const pAvg = (p1 + p2) / 2;
+      const diff = Math.abs(p1 - p2);
+      let requiredN = null;
+      if (diff > 0) {
+        const num = zAlpha * Math.sqrt(2 * pAvg * (1 - pAvg)) + zBeta * Math.sqrt(p1*(1-p1) + p2*(1-p2));
+        requiredN = Math.ceil((num * num) / (diff * diff));
+      }
+
+      return { p1, p2, pPool, SE, z, pValue, significant, ciLow, ciHigh, requiredN, zAlpha, seDiff };
+    }
+
+    function welchTTest(n1, mean1, sd1, n2, mean2, sd2, conf) {
+      const SE = Math.sqrt((sd1*sd1)/n1 + (sd2*sd2)/n2);
+      const t = SE === 0 ? 0 : (mean1 - mean2) / SE;
+      const v1 = (sd1*sd1)/n1;
+      const v2 = (sd2*sd2)/n2;
+      const dfNum = (v1 + v2) * (v1 + v2);
+      const dfDen = (v1*v1)/(n1-1) + (v2*v2)/(n2-1);
+      const df = dfDen === 0 ? 1 : dfNum / dfDen;
+      // Use normal CDF approximation (accurate for df > 30, reasonable otherwise)
+      const pValue = 2 * (1 - normalCDF(Math.abs(t)));
+      const zAlpha = getZAlpha(conf);
+      const significant = pValue < (1 - conf);
+      const ciLow = (mean1 - mean2) - zAlpha * SE;
+      const ciHigh = (mean1 - mean2) + zAlpha * SE;
+
+      return { mean1, mean2, SE, t, df, pValue, significant, ciLow, ciHigh, zAlpha };
+    }
+
+    /* ── Format helpers ── */
+    function pct(v) { return (v * 100).toFixed(2) + '%'; }
+    function pctPt(v) { return (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + '%p'; }
+    function num(v, d) { return Number(v).toFixed(d !== undefined ? d : 4); }
+    function commaNum(v) { return Number(v).toLocaleString(); }
+
+    /* ── Chart instance ── */
+    let chartInstance = null;
+
+    /* ── Analyze ── */
+    analyzeBtn.addEventListener('click', runAnalysis);
+
+    function runAnalysis() {
+      const type = testType.value;
+      const conf = parseFloat(confidence.value);
+      const label = testLabel.value.trim() || 'A/B 테스트';
+      const nameA = $('nameA').value.trim() || 'A';
+      const nameB = $('nameB').value.trim() || 'B';
+
+      let results, variantA, variantB;
+
+      if (type === 'conversion') {
+        const nA = parseInt($('visitorsA').value);
+        const cA = parseInt($('conversionsA').value);
+        const nB = parseInt($('visitorsB').value);
+        const cB = parseInt($('conversionsB').value);
+
+        if (!nA || !nB || nA <= 0 || nB <= 0) { alert('방문자 수를 올바르게 입력해주세요.'); return; }
+        if (isNaN(cA) || isNaN(cB) || cA < 0 || cB < 0) { alert('전환 수를 올바르게 입력해주세요.'); return; }
+        if (cA > nA || cB > nB) { alert('전환 수는 방문자 수보다 클 수 없습니다.'); return; }
+
+        results = twoProportionZTest(nA, cA, nB, cB, conf);
+        variantA = { name: nameA, visitors: nA, conversions: cA, rate: results.p1 };
+        variantB = { name: nameB, visitors: nB, conversions: cB, rate: results.p2 };
+
+        renderConversionResults(variantA, variantB, results, conf);
+      } else {
+        const n1 = parseInt($('sampleA').value);
+        const m1 = parseFloat($('meanA').value);
+        const s1 = parseFloat($('sdA').value);
+        const n2 = parseInt($('sampleB').value);
+        const m2 = parseFloat($('meanB').value);
+        const s2 = parseFloat($('sdB').value);
+
+        if (!n1 || !n2 || n1 < 2 || n2 < 2) { alert('표본 크기를 2 이상으로 입력해주세요.'); return; }
+        if (isNaN(m1) || isNaN(m2)) { alert('평균을 올바르게 입력해주세요.'); return; }
+        if (isNaN(s1) || isNaN(s2) || s1 < 0 || s2 < 0) { alert('표준편차를 올바르게 입력해주세요.'); return; }
+
+        results = welchTTest(n1, m1, s1, n2, m2, s2, conf);
+        variantA = { name: nameA, sampleSize: n1, mean: m1, sd: s1 };
+        variantB = { name: nameB, sampleSize: n2, mean: m2, sd: s2 };
+
+        renderMeanResults(variantA, variantB, results, conf);
+      }
+
+      resultsSection.classList.remove('hidden');
+      resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      // Save history
+      UXStorage.saveHistory('ab-test', label, {
+        testType: type,
+        variantA,
+        variantB,
+        confidence: conf,
+        results,
+        timestamp: new Date().toISOString()
+      });
+      renderHistory();
+    }
+
+    /* ── Render: Conversion rate results ── */
+    function renderConversionResults(a, b, r, conf) {
+      const confLabel = Math.round(conf * 100) + '%';
+      const winnerIsB = r.p2 > r.p1;
+      const winner = winnerIsB ? b : a;
+      const diff = Math.abs(r.p1 - r.p2);
+      const relDiff = r.p1 === 0 ? (r.p2 === 0 ? 0 : Infinity) : ((r.p2 - r.p1) / r.p1);
+
+      // Result cards
+      $('resultCards').innerHTML = `
+        <div class="result-card ${!winnerIsB && r.significant ? 'winner' : ''}">
+          <div class="result-label"><span class="variant-dot variant-dot-a" style="display:inline-block; vertical-align:middle; margin-right:6px;"></span>${a.name}</div>
+          <div class="result-rate" style="color:#4F46E5;">${pct(r.p1)}</div>
+          <div class="result-sub">${commaNum(a.conversions)} / ${commaNum(a.visitors)}</div>
+        </div>
+        <div class="result-card ${winnerIsB && r.significant ? 'winner' : ''}">
+          <div class="result-label"><span class="variant-dot variant-dot-b" style="display:inline-block; vertical-align:middle; margin-right:6px;"></span>${b.name}</div>
+          <div class="result-rate" style="color:#0EA5E9;">${pct(r.p2)}</div>
+          <div class="result-sub">${commaNum(b.conversions)} / ${commaNum(b.visitors)}</div>
+        </div>
+      `;
+
+      // Diff banner
+      const relLabel = isFinite(relDiff) ? `${(relDiff * 100).toFixed(1)}% ${winnerIsB ? '개선' : '감소'}` : '';
+      $('diffBanner').innerHTML = `
+        <div>
+          <div style="font-size:12px; color:var(--text-muted); margin-bottom:2px;">절대 차이</div>
+          <div class="diff-value">${pctPt(r.p2 - r.p1)}</div>
+        </div>
+        <div style="font-size:24px; color:var(--text-muted);">/</div>
+        <div>
+          <div style="font-size:12px; color:var(--text-muted); margin-bottom:2px;">상대 차이</div>
+          <div class="diff-detail" style="font-size:18px; font-weight:600;">${relLabel || '-'}</div>
+        </div>
+      `;
+
+      // Chart
+      renderChart([a.name, b.name], [r.p1 * 100, r.p2 * 100], '전환율 (%)');
+
+      // Stats table
+      $('statTable').querySelector('tbody').innerHTML = `
+        <tr><th>검정 방법</th><td>Two-Proportion Z-Test</td></tr>
+        <tr><th>Z-score</th><td>${num(r.z)}</td></tr>
+        <tr><th>p-value</th><td>${r.pValue < 0.0001 ? '< 0.0001' : num(r.pValue)}</td></tr>
+        <tr><th>신뢰수준</th><td>${confLabel}</td></tr>
+        <tr><th>차이의 ${confLabel} 신뢰구간</th><td>${pctPt(r.ciLow)} ~ ${pctPt(r.ciHigh)}</td></tr>
+      `;
+
+      // Verdict
+      if (r.significant) {
+        $('verdictBox').innerHTML = `
+          <div class="verdict-box significant">
+            <div class="verdict-title">유의미한 차이 &#10004;</div>
+            <strong>${winner.name}</strong>이(가) ${confLabel} 신뢰수준에서 통계적으로 우수합니다.
+            <br>p-value = ${r.pValue < 0.0001 ? '< 0.0001' : num(r.pValue)}로, 유의수준 ${num(1 - conf, 2)} 미만입니다.
+          </div>
+        `;
+      } else {
+        $('verdictBox').innerHTML = `
+          <div class="verdict-box not-significant">
+            <div class="verdict-title">유의미하지 않음 &#9888;&#65039;</div>
+            통계적으로 유의미한 차이가 없습니다.
+            <br>p-value = ${num(r.pValue)}로, 유의수준 ${num(1 - conf, 2)}보다 큽니다.
+          </div>
+        `;
+      }
+
+      // Required sample size
+      if (r.requiredN !== null && diff > 0) {
+        $('sampleInfo').innerHTML = `
+          &#128161; <strong>필요 표본 크기 (80% 검정력 기준)</strong><br>
+          현재 관찰된 차이(${pctPt(r.p2 - r.p1)})를 ${confLabel} 신뢰수준에서 유의미하게 검증하려면
+          각 그룹당 약 <strong>${commaNum(r.requiredN)}</strong>명이 필요합니다.
+          ${r.significant ? '' : `<br>현재 각 그룹 크기: A=${commaNum(a.visitors)}, B=${commaNum(b.visitors)}`}
+        `;
+        $('sampleInfo').classList.remove('hidden');
+      } else {
+        $('sampleInfo').innerHTML = '';
+      }
+    }
+
+    /* ── Render: Mean comparison results ── */
+    function renderMeanResults(a, b, r, conf) {
+      const confLabel = Math.round(conf * 100) + '%';
+      const winnerIsB = r.mean2 > r.mean1;
+      const winner = winnerIsB ? b : a;
+      const diff = r.mean2 - r.mean1;
+      const relDiff = r.mean1 === 0 ? (r.mean2 === 0 ? 0 : Infinity) : (diff / Math.abs(r.mean1));
+
+      // Result cards
+      $('resultCards').innerHTML = `
+        <div class="result-card ${!winnerIsB && r.significant ? 'winner' : ''}">
+          <div class="result-label"><span class="variant-dot variant-dot-a" style="display:inline-block; vertical-align:middle; margin-right:6px;"></span>${a.name}</div>
+          <div class="result-rate" style="color:#4F46E5;">${num(r.mean1, 2)}</div>
+          <div class="result-sub">n=${commaNum(a.sampleSize)}, SD=${num(a.sd, 2)}</div>
+        </div>
+        <div class="result-card ${winnerIsB && r.significant ? 'winner' : ''}">
+          <div class="result-label"><span class="variant-dot variant-dot-b" style="display:inline-block; vertical-align:middle; margin-right:6px;"></span>${b.name}</div>
+          <div class="result-rate" style="color:#0EA5E9;">${num(r.mean2, 2)}</div>
+          <div class="result-sub">n=${commaNum(b.sampleSize)}, SD=${num(b.sd, 2)}</div>
+        </div>
+      `;
+
+      // Diff banner
+      const relLabel = isFinite(relDiff) ? `${(relDiff * 100).toFixed(1)}% ${diff >= 0 ? '증가' : '감소'}` : '';
+      $('diffBanner').innerHTML = `
+        <div>
+          <div style="font-size:12px; color:var(--text-muted); margin-bottom:2px;">절대 차이</div>
+          <div class="diff-value">${diff >= 0 ? '+' : ''}${num(diff, 2)}</div>
+        </div>
+        <div style="font-size:24px; color:var(--text-muted);">/</div>
+        <div>
+          <div style="font-size:12px; color:var(--text-muted); margin-bottom:2px;">상대 차이</div>
+          <div class="diff-detail" style="font-size:18px; font-weight:600;">${relLabel || '-'}</div>
+        </div>
+      `;
+
+      // Chart
+      renderChart([a.name, b.name], [r.mean1, r.mean2], '평균');
+
+      // Stats table
+      $('statTable').querySelector('tbody').innerHTML = `
+        <tr><th>검정 방법</th><td>Welch's t-Test</td></tr>
+        <tr><th>t-statistic</th><td>${num(r.t)}</td></tr>
+        <tr><th>자유도 (df)</th><td>${num(r.df, 1)}</td></tr>
+        <tr><th>p-value</th><td>${r.pValue < 0.0001 ? '< 0.0001' : num(r.pValue)}</td></tr>
+        <tr><th>신뢰수준</th><td>${confLabel}</td></tr>
+        <tr><th>차이의 ${confLabel} 신뢰구간</th><td>${num(r.ciLow, 2)} ~ ${num(r.ciHigh, 2)}</td></tr>
+      `;
+
+      // Verdict
+      if (r.significant) {
+        $('verdictBox').innerHTML = `
+          <div class="verdict-box significant">
+            <div class="verdict-title">유의미한 차이 &#10004;</div>
+            <strong>${winner.name}</strong>이(가) ${confLabel} 신뢰수준에서 통계적으로 우수합니다.
+            <br>p-value = ${r.pValue < 0.0001 ? '< 0.0001' : num(r.pValue)}로, 유의수준 ${num(1 - conf, 2)} 미만입니다.
+          </div>
+        `;
+      } else {
+        $('verdictBox').innerHTML = `
+          <div class="verdict-box not-significant">
+            <div class="verdict-title">유의미하지 않음 &#9888;&#65039;</div>
+            통계적으로 유의미한 차이가 없습니다.
+            <br>p-value = ${num(r.pValue)}로, 유의수준 ${num(1 - conf, 2)}보다 큽니다.
+          </div>
+        `;
+      }
+
+      // No required sample size for mean comparison
+      $('sampleInfo').innerHTML = '';
+    }
+
+    /* ── Chart ── */
+    function renderChart(labels, values, yLabel) {
+      if (chartInstance) chartInstance.destroy();
+      const ctx = $('comparisonChart').getContext('2d');
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: yLabel,
+            data: values,
+            backgroundColor: [UXColors.paletteAlpha(0.2)[0], UXColors.paletteAlpha(0.2)[1]],
+            borderColor: [UXColors.palette[0], UXColors.palette[1]],
+            borderWidth: 2,
+            borderRadius: 6,
+            maxBarThickness: 120
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => `${ctx.parsed.y.toFixed(2)}`
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: yLabel, font: { size: 12 } },
+              grid: { color: 'rgba(0,0,0,0.05)' }
+            },
+            x: {
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
+
+    /* ── CSV Export ── */
+    $('exportCsvBtn').addEventListener('click', function() {
+      const type = testType.value;
+      const label = testLabel.value.trim() || 'AB_Test';
+      let rows;
+      if (type === 'conversion') {
+        rows = [
+          ['Variant', '방문자 수', '전환 수', '전환율'],
+          [$('nameA').value, $('visitorsA').value, $('conversionsA').value, pct(parseInt($('conversionsA').value) / parseInt($('visitorsA').value))],
+          [$('nameB').value, $('visitorsB').value, $('conversionsB').value, pct(parseInt($('conversionsB').value) / parseInt($('visitorsB').value))]
+        ];
+      } else {
+        rows = [
+          ['Variant', '표본 크기', '평균', '표준편차'],
+          [$('nameA').value, $('sampleA').value, $('meanA').value, $('sdA').value],
+          [$('nameB').value, $('sampleB').value, $('meanB').value, $('sdB').value]
+        ];
+      }
+      UXExport.downloadCSV(rows, `ab-test-${label}.csv`);
+    });
+
+    /* ── Reset ── */
+    resetBtn.addEventListener('click', function() {
+      testLabel.value = '';
+      $('nameA').value = 'Control';
+      $('nameB').value = 'Variation';
+      ['visitorsA','conversionsA','visitorsB','conversionsB','sampleA','meanA','sdA','sampleB','meanB','sdB'].forEach(id => $(id).value = '');
+      resultsSection.classList.add('hidden');
+      if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    });
+
+    /* ── Template management ── */
+    const templateSelect = $('templateSelect');
+    const loadTemplateBtn = $('loadTemplateBtn');
+    const deleteTemplateBtn = $('deleteTemplateBtn');
+    const saveTemplateBtn = $('saveTemplateBtn');
+    const templateNameInput = $('templateName');
+
+    function refreshTemplates() {
+      const templates = UXStorage.getTemplates('ab-test');
+      templateSelect.innerHTML = '<option value="">저장된 템플릿 선택...</option>';
+      templates.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = t.name + ' (' + UXDate.format(t.createdAt) + ')';
+        templateSelect.appendChild(opt);
+      });
+      loadTemplateBtn.disabled = true;
+      deleteTemplateBtn.disabled = true;
+    }
+
+    templateSelect.addEventListener('change', function() {
+      const hasVal = !!this.value;
+      loadTemplateBtn.disabled = !hasVal;
+      deleteTemplateBtn.disabled = !hasVal;
+    });
+
+    saveTemplateBtn.addEventListener('click', function() {
+      const name = templateNameInput.value.trim();
+      if (!name) { alert('템플릿 이름을 입력해주세요.'); return; }
+      const data = gatherInputs();
+      UXStorage.saveTemplate('ab-test', name, data);
+      templateNameInput.value = '';
+      refreshTemplates();
+    });
+
+    loadTemplateBtn.addEventListener('click', function() {
+      const id = templateSelect.value;
+      if (!id) return;
+      const tpl = UXStorage.loadTemplate('ab-test', id);
+      if (!tpl) return;
+      applyInputs(tpl.data);
+    });
+
+    deleteTemplateBtn.addEventListener('click', function() {
+      const id = templateSelect.value;
+      if (!id) return;
+      if (!confirm('이 템플릿을 삭제하시겠습니까?')) return;
+      UXStorage.deleteTemplate('ab-test', id);
+      refreshTemplates();
+    });
+
+    function gatherInputs() {
+      return {
+        testType: testType.value,
+        confidence: confidence.value,
+        testLabel: testLabel.value,
+        nameA: $('nameA').value,
+        nameB: $('nameB').value,
+        visitorsA: $('visitorsA').value,
+        conversionsA: $('conversionsA').value,
+        visitorsB: $('visitorsB').value,
+        conversionsB: $('conversionsB').value,
+        sampleA: $('sampleA').value,
+        meanA: $('meanA').value,
+        sdA: $('sdA').value,
+        sampleB: $('sampleB').value,
+        meanB: $('meanB').value,
+        sdB: $('sdB').value
+      };
+    }
+
+    function applyInputs(d) {
+      testType.value = d.testType || 'conversion';
+      confidence.value = d.confidence || '0.95';
+      testLabel.value = d.testLabel || '';
+      $('nameA').value = d.nameA || 'Control';
+      $('nameB').value = d.nameB || 'Variation';
+      $('visitorsA').value = d.visitorsA || '';
+      $('conversionsA').value = d.conversionsA || '';
+      $('visitorsB').value = d.visitorsB || '';
+      $('conversionsB').value = d.conversionsB || '';
+      $('sampleA').value = d.sampleA || '';
+      $('meanA').value = d.meanA || '';
+      $('sdA').value = d.sdA || '';
+      $('sampleB').value = d.sampleB || '';
+      $('meanB').value = d.meanB || '';
+      $('sdB').value = d.sdB || '';
+      toggleTestType();
+      resultsSection.classList.add('hidden');
+    }
+
+    /* ── History ── */
+    function renderHistory() {
+      const history = UXStorage.getHistory('ab-test');
+      const container = $('historyList');
+      const clearBtn = $('clearHistoryBtn');
+
+      if (!history.length) {
+        container.innerHTML = '<div class="empty-state">저장된 분석 이력이 없습니다.</div>';
+        clearBtn.style.display = 'none';
+        return;
+      }
+
+      clearBtn.style.display = '';
+      container.innerHTML = history.map(h => {
+        const d = h.data;
+        const typeLabel = d.testType === 'conversion' ? '전환율' : '평균값';
+        const sigBadge = d.results && d.results.significant
+          ? '<span class="badge badge-success">유의미</span>'
+          : '<span class="badge badge-warning">비유의미</span>';
+        return `
+          <div class="history-item">
+            <div>
+              <strong>${h.label}</strong>
+              <span class="badge badge-neutral" style="margin-left:6px;">${typeLabel}</span>
+              ${sigBadge}
+              <div class="text-secondary text-sm">${UXDate.format(h.timestamp)} &middot; ${d.variantA.name} vs ${d.variantB.name}</div>
+            </div>
+            <button class="btn btn-sm btn-secondary" onclick="loadHistoryItem('${h.id}')">불러오기</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.loadHistoryItem = function(id) {
+      const history = UXStorage.getHistory('ab-test');
+      const item = history.find(h => h.id === id);
+      if (!item) return;
+      const d = item.data;
+      testType.value = d.testType || 'conversion';
+      confidence.value = String(d.confidence) || '0.95';
+      testLabel.value = item.label || '';
+      toggleTestType();
+
+      if (d.testType === 'conversion') {
+        $('nameA').value = d.variantA.name || 'Control';
+        $('visitorsA').value = d.variantA.visitors || '';
+        $('conversionsA').value = d.variantA.conversions || '';
+        $('nameB').value = d.variantB.name || 'Variation';
+        $('visitorsB').value = d.variantB.visitors || '';
+        $('conversionsB').value = d.variantB.conversions || '';
+      } else {
+        $('nameA').value = d.variantA.name || 'Control';
+        $('sampleA').value = d.variantA.sampleSize || '';
+        $('meanA').value = d.variantA.mean || '';
+        $('sdA').value = d.variantA.sd || '';
+        $('nameB').value = d.variantB.name || 'Variation';
+        $('sampleB').value = d.variantB.sampleSize || '';
+        $('meanB').value = d.variantB.mean || '';
+        $('sdB').value = d.variantB.sd || '';
+      }
+
+      runAnalysis();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    $('clearHistoryBtn').addEventListener('click', function() {
+      if (!confirm('모든 분석 이력을 삭제하시겠습니까?')) return;
+      UXStorage.clearModule('ab-test');
+      renderHistory();
+    });
+
+    /* ── Init ── */
+    refreshTemplates();
+    renderHistory();
+  })();
+  </script>
+</body>
+</html>

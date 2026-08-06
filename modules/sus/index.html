@@ -159,6 +159,26 @@
       </div>
     </div>
 
+    <!-- Template Section -->
+    <div class="card fade-in">
+      <div class="card-header">📁 템플릿</div>
+      <div class="card-body">
+        <div class="flex-between">
+          <div class="flex gap-8" style="flex:1; align-items:center;">
+            <select class="select" id="templateSelect" style="max-width:300px;" onchange="onTemplateSelectChange()">
+              <option value="">저장된 템플릿 선택...</option>
+            </select>
+            <button class="btn btn-sm btn-secondary" id="loadTemplateBtn" disabled onclick="loadTemplate()">불러오기</button>
+            <button class="btn btn-sm btn-danger" id="deleteTemplateBtn" disabled onclick="deleteTemplate()">삭제</button>
+          </div>
+          <div class="flex gap-8">
+            <input type="text" class="input input-sm" id="templateName" placeholder="템플릿 이름" style="width:180px;">
+            <button class="btn btn-sm btn-primary" id="saveTemplateBtn" onclick="saveTemplate()">저장</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Input Section -->
     <div class="card fade-in">
       <div class="card-header">데이터 입력</div>
@@ -664,9 +684,95 @@
       renderHistory();
     }
 
+    // ── Template ──
+    function onTemplateSelectChange() {
+      const val = document.getElementById('templateSelect').value;
+      document.getElementById('loadTemplateBtn').disabled = !val;
+      document.getElementById('deleteTemplateBtn').disabled = !val;
+    }
+
+    function refreshTemplateList() {
+      const templates = UXStorage.getTemplates('sus');
+      const select = document.getElementById('templateSelect');
+      select.innerHTML = '<option value="">저장된 템플릿 선택...</option>';
+      templates.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = `${t.name} (${UXDate.format(t.createdAt)})`;
+        select.appendChild(opt);
+      });
+      document.getElementById('loadTemplateBtn').disabled = true;
+      document.getElementById('deleteTemplateBtn').disabled = true;
+    }
+
+    function saveTemplate() {
+      const nameInput = document.getElementById('templateName');
+      const name = nameInput.value.trim();
+      if (!name) {
+        nameInput.style.borderColor = 'var(--danger)';
+        nameInput.focus();
+        return;
+      }
+      nameInput.style.borderColor = '';
+
+      const count = parseInt(document.getElementById('respondentCount').value) || 5;
+      const scores = [];
+      for (let r = 0; r < count; r++) {
+        const row = [];
+        for (let q = 0; q < 10; q++) {
+          const el = document.getElementById(`r${r}q${q}`);
+          row.push(el ? el.value : '');
+        }
+        scores.push(row);
+      }
+
+      UXStorage.saveTemplate('sus', name, {
+        projectLabel: document.getElementById('projectLabel').value,
+        respondentCount: count,
+        scores: scores,
+      });
+
+      nameInput.value = '';
+      refreshTemplateList();
+      alert('템플릿이 저장되었습니다.');
+    }
+
+    function loadTemplate() {
+      const id = document.getElementById('templateSelect').value;
+      if (!id) return;
+      const tpl = UXStorage.loadTemplate('sus', id);
+      if (!tpl) return;
+
+      const data = tpl.data;
+      document.getElementById('projectLabel').value = data.projectLabel || '';
+      document.getElementById('respondentCount').value = data.respondentCount || 5;
+      generateTable();
+
+      if (data.scores) {
+        for (let r = 0; r < data.scores.length; r++) {
+          for (let q = 0; q < 10; q++) {
+            const el = document.getElementById(`r${r}q${q}`);
+            if (el && data.scores[r][q] !== undefined) {
+              el.value = data.scores[r][q];
+              el.classList.remove('invalid');
+            }
+          }
+        }
+      }
+    }
+
+    function deleteTemplate() {
+      const id = document.getElementById('templateSelect').value;
+      if (!id) return;
+      if (!confirm('이 템플릿을 삭제하시겠습니까?')) return;
+      UXStorage.deleteTemplate('sus', id);
+      refreshTemplateList();
+    }
+
     // ── Init ──
     generateTable();
     renderHistory();
+    refreshTemplateList();
   </script>
 </body>
 </html>

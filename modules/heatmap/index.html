@@ -1,0 +1,1926 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UX Heatmap — AI 시선 예측 분석</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a23;
+      --surface-hover: #22222e;
+      --border: #2a2a3a;
+      --text: #e4e4ed;
+      --text-dim: #8888a0;
+      --accent: #6366f1;
+      --accent-hover: #818cf8;
+      --accent-glow: rgba(99, 102, 241, 0.15);
+      --danger: #ef4444;
+      --success: #22c55e;
+      --warning: #fbbf24;
+      --radius: 12px;
+    }
+
+    .toolkit-back {
+      position: fixed; top: 12px; left: 12px; z-index: 9999;
+      background: rgba(255,255,255,0.1); color: #e4e4ed; text-decoration: none;
+      padding: 6px 14px; border-radius: 8px; font-size: 13px; backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.1); transition: all 0.15s;
+    }
+    .toolkit-back:hover { background: rgba(255,255,255,0.2); }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 32px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo {
+      width: 36px; height: 36px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 700; color: #fff;
+    }
+    .header h1 {
+      font-size: 18px; font-weight: 600;
+    }
+    .header h1 span { color: var(--accent); }
+    .badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 100px;
+      background: var(--accent-glow);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .header-right {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--text-dim);
+    }
+    .status-dot.connected { background: var(--success); }
+    .status-text { font-size: 13px; color: var(--text-dim); }
+
+    /* Layout */
+    .app {
+      display: flex;
+      height: calc(100vh - 65px);
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 320px;
+      min-width: 320px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    .sidebar-section {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-section h3 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+    }
+
+    /* Sidebar tabs */
+    .sidebar-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-tab {
+      flex: 1;
+      padding: 12px 16px;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .sidebar-tab:hover { color: var(--text); background: var(--surface-hover); }
+    .sidebar-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: contents; }
+
+    /* Upload area */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 32px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: var(--accent);
+      background: var(--accent-glow);
+    }
+    .upload-zone svg {
+      width: 40px; height: 40px;
+      stroke: var(--text-dim);
+      margin-bottom: 12px;
+    }
+    .upload-zone.drag-over svg { stroke: var(--accent); }
+    .upload-zone p {
+      font-size: 14px; color: var(--text-dim);
+      line-height: 1.6;
+    }
+    .upload-zone p strong { color: var(--accent); }
+    .upload-zone input { display: none; }
+
+    /* File list */
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-bottom: 4px;
+    }
+    .file-item:hover { background: var(--surface-hover); }
+    .file-item.active { background: var(--accent-glow); }
+    .file-thumb {
+      width: 40px; height: 40px;
+      border-radius: 6px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+    }
+    .file-info { flex: 1; min-width: 0; }
+    .file-name {
+      font-size: 13px; font-weight: 500;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .file-meta { font-size: 11px; color: var(--text-dim); }
+    .file-status {
+      font-size: 11px; padding: 2px 8px;
+      border-radius: 100px; font-weight: 500;
+    }
+    .file-status.analyzing {
+      background: rgba(251, 191, 36, 0.15); color: #fbbf24;
+    }
+    .file-status.done {
+      background: rgba(34, 197, 94, 0.15); color: var(--success);
+    }
+    .file-status.waiting {
+      background: rgba(136, 136, 160, 0.1); color: var(--text-dim);
+    }
+    .file-remove {
+      background: none; border: none;
+      color: var(--text-dim); cursor: pointer; font-size: 16px;
+      padding: 4px; border-radius: 4px;
+      opacity: 0; transition: all 0.15s;
+    }
+    .file-item:hover .file-remove { opacity: 1; }
+    .file-remove:hover { color: var(--danger); background: rgba(239,68,68,0.1); }
+
+    /* Controls */
+    .control-group { margin-bottom: 16px; }
+    .control-group label {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 13px; color: var(--text-dim); margin-bottom: 8px;
+    }
+    .control-group label span { color: var(--text); font-weight: 500; }
+    input[type="range"] {
+      -webkit-appearance: none; width: 100%; height: 4px;
+      background: var(--border); border-radius: 2px; outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 16px; height: 16px;
+      background: var(--accent); border-radius: 50%; cursor: pointer;
+    }
+    select {
+      width: 100%; padding: 8px 12px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text);
+      font-size: 13px; outline: none; cursor: pointer;
+    }
+    select:focus { border-color: var(--accent); }
+
+    /* Buttons */
+    .btn {
+      width: 100%; padding: 10px 16px;
+      border: none; border-radius: 8px;
+      font-size: 14px; font-weight: 500;
+      cursor: pointer; transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-primary {
+      background: var(--accent); color: #fff;
+    }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary {
+      background: var(--surface-hover); color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: var(--border); }
+    .btn-group { display: flex; gap: 8px; }
+    .btn-group .btn { flex: 1; }
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.1); color: var(--danger);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+    .btn-danger:hover { background: rgba(239, 68, 68, 0.2); }
+
+    /* Main Content */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .tool-btn {
+      padding: 6px 12px;
+      background: none; border: none;
+      color: var(--text-dim); font-size: 13px;
+      border-radius: 6px; cursor: pointer;
+      display: flex; align-items: center; gap: 6px;
+      transition: all 0.15s;
+    }
+    .tool-btn:hover { background: var(--surface-hover); color: var(--text); }
+    .tool-btn.active { background: var(--accent-glow); color: var(--accent); }
+    .toolbar-sep {
+      width: 1px; height: 20px;
+      background: var(--border); margin: 0 4px;
+    }
+
+    /* Canvas area */
+    .canvas-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(99,102,241,0.03) 0%, transparent 70%),
+        repeating-conic-gradient(var(--surface) 0% 25%, transparent 0% 50%) 0 0 / 24px 24px;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center; padding: 40px;
+    }
+    .empty-icon {
+      width: 80px; height: 80px;
+      background: var(--surface);
+      border-radius: 20px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+      border: 1px solid var(--border);
+    }
+    .empty-icon svg { width: 36px; height: 36px; stroke: var(--text-dim); }
+    .empty-state h2 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+    .empty-state p { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
+
+    /* Image viewer */
+    .viewer {
+      position: relative;
+      max-width: 90%;
+      max-height: 90%;
+      display: none;
+    }
+    .viewer.visible { display: block; }
+    .viewer img {
+      max-width: 100%;
+      max-height: calc(100vh - 200px);
+      border-radius: var(--radius);
+      display: block;
+    }
+    .viewer .heatmap-overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      border-radius: var(--radius);
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+
+    /* Drawing overlay for analysis mode */
+    .drawing-overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      border-radius: var(--radius);
+      cursor: crosshair;
+      z-index: 5;
+      display: none;
+    }
+    .drawing-overlay.active { display: block; }
+
+    /* Compare mode */
+    .compare-container {
+      display: none;
+      width: 90%;
+      max-height: 90%;
+      position: relative;
+    }
+    .compare-container.visible { display: flex; gap: 16px; }
+    .compare-panel {
+      flex: 1;
+      text-align: center;
+    }
+    .compare-panel img {
+      max-width: 100%;
+      max-height: calc(100vh - 240px);
+      border-radius: var(--radius);
+    }
+    .compare-label {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Loading overlay */
+    .loading-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 15, 19, 0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+      z-index: 10;
+      backdrop-filter: blur(4px);
+    }
+    .loading-overlay.visible { display: flex; }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 14px; color: var(--text-dim); }
+
+    /* Metrics bar */
+    .metrics-bar {
+      display: none;
+      padding: 12px 24px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      gap: 32px;
+    }
+    .metrics-bar.visible { display: flex; }
+    .metric {
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .metric-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+    .metric-value { font-size: 20px; font-weight: 600; }
+    .metric-value.high { color: var(--danger); }
+    .metric-value.medium { color: #fbbf24; }
+    .metric-value.low { color: var(--success); }
+
+    /* Toast */
+    .toast-container {
+      position: fixed; bottom: 24px; right: 24px;
+      display: flex; flex-direction: column; gap: 8px;
+      z-index: 1000;
+    }
+    .toast {
+      padding: 12px 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      animation: slideIn 0.3s ease;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+    .toast.error { border-color: var(--danger); }
+    .toast.success { border-color: var(--success); }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* ========== Analysis Mode ========== */
+
+    .analysis-hint {
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.6;
+      padding: 12px;
+      background: var(--bg);
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+    .analysis-hint strong { color: var(--accent); }
+
+    /* Region list */
+    .region-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      border: 1px solid var(--border);
+      transition: all 0.15s;
+    }
+    .region-item:hover { border-color: var(--text-dim); }
+    .region-item.active { border-color: var(--accent); background: var(--accent-glow); }
+    .region-color {
+      width: 12px; height: 12px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+    .region-name-input {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      min-width: 0;
+      font-family: inherit;
+    }
+    .region-name-input::placeholder { color: var(--text-dim); }
+    .region-score {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 100px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .region-score.blind { background: rgba(239,68,68,0.15); color: var(--danger); }
+    .region-score.caution { background: rgba(251,191,36,0.15); color: var(--warning); }
+    .region-score.good { background: rgba(34,197,94,0.15); color: var(--success); }
+    .region-score.excellent { background: rgba(99,102,241,0.15); color: var(--accent); }
+    .region-remove {
+      background: none; border: none;
+      color: var(--text-dim); cursor: pointer; font-size: 14px;
+      padding: 2px; border-radius: 4px;
+      opacity: 0; transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .region-item:hover .region-remove { opacity: 1; }
+    .region-remove:hover { color: var(--danger); }
+
+    .region-empty {
+      text-align: center;
+      padding: 24px 16px;
+      color: var(--text-dim);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    /* Analysis report */
+    .analysis-report {
+      display: none;
+      padding: 16px;
+      background: var(--bg);
+      border-radius: 8px;
+      margin-top: 12px;
+    }
+    .analysis-report.visible { display: block; }
+    .report-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+    }
+    .report-summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .report-card {
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .report-card-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .report-card-value {
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .report-verdict {
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .report-verdict.warn { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); }
+    .report-verdict.ok { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); }
+
+    /* History */
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-bottom: 4px;
+      border: 1px solid var(--border);
+    }
+    .history-item:hover { background: var(--surface-hover); border-color: var(--text-dim); }
+    .history-thumb {
+      width: 48px; height: 36px;
+      border-radius: 4px;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+    }
+    .history-info { flex: 1; min-width: 0; }
+    .history-badges { display: flex; gap: 4px; margin-top: 3px; }
+    .history-badge {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 100px;
+      font-weight: 500;
+    }
+    .history-badge.metric { background: rgba(99,102,241,0.15); color: var(--accent); }
+    .history-badge.regions { background: rgba(34,197,94,0.15); color: var(--success); }
+    .history-date-group {
+      font-size: 11px;
+      color: var(--text-dim);
+      padding: 8px 4px 4px;
+      font-weight: 600;
+    }
+
+    /* Insights */
+    .insights-bar {
+      display: none;
+      padding: 12px 24px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .insights-bar.visible { display: flex; }
+    .insight-card {
+      flex: 1;
+      min-width: 200px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      cursor: default;
+    }
+    .insight-card:hover { border-color: var(--text-dim); }
+    .insight-title {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .insight-icon {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .insight-icon.peak { background: var(--danger); }
+    .insight-icon.pattern { background: var(--accent); }
+    .insight-icon.distribution { background: var(--warning); }
+    .insight-icon.coverage { background: var(--success); }
+    .insight-icon.bias { background: #f97316; }
+    .insight-desc {
+      font-size: 12px;
+      color: var(--text-dim);
+      line-height: 1.5;
+    }
+    .insight-detail {
+      font-size: 11px;
+      color: var(--text-dim);
+      opacity: 0.7;
+      margin-top: 4px;
+      line-height: 1.4;
+      display: none;
+    }
+    .insight-card:hover .insight-detail { display: block; }
+    .insight-ref {
+      font-size: 10px;
+      color: #9ca3af;
+      margin-top: 6px;
+      padding-top: 5px;
+      border-top: 1px solid #f0f0f0;
+      line-height: 1.3;
+      display: none;
+    }
+    .insight-card:hover .insight-ref { display: block; }
+    .insight-principle {
+      color: #6366f1;
+      font-weight: 600;
+    }
+    .insight-source {
+      font-style: italic;
+      color: #a1a1aa;
+    }
+    .insight-icon.model { background: #8b5cf6; }
+  </style>
+</head>
+<body>
+  <a href="../../index.html" class="toolkit-back">&larr; UX Toolkit</a>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">H</div>
+      <h1>UX <span>Heatmap</span></h1>
+      <span class="badge">DeepGaze IIE</span>
+    </div>
+    <div class="header-right">
+      <div class="status-dot" id="statusDot"></div>
+      <span class="status-text" id="statusText">서버 연결 확인 중...</span>
+    </div>
+  </div>
+
+  <div class="app">
+    <!-- Sidebar -->
+    <div class="sidebar">
+
+      <!-- Upload -->
+      <div class="sidebar-section">
+        <h3>이미지 업로드</h3>
+        <div class="upload-zone" id="uploadZone">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+            <path d="M12 16V4m0 0l-4 4m4-4l4 4M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4"/>
+          </svg>
+          <p>화면 이미지를 드래그하거나<br/><strong>클릭하여 선택</strong><br/><span style="font-size:12px;color:var(--text-dim)">Ctrl+V 붙여넣기도 가능</span></p>
+          <input type="file" id="fileInput" accept="image/*" multiple />
+        </div>
+      </div>
+
+      <!-- File list -->
+      <div class="sidebar-section" style="flex:1; overflow-y:auto;">
+        <h3>분석 파일 <span id="fileCount"></span></h3>
+        <div id="fileList"></div>
+      </div>
+
+      <!-- Sidebar Tabs -->
+      <div class="sidebar-tabs">
+        <button class="sidebar-tab active" data-tab="heatmap" onclick="switchSidebarTab('heatmap')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>
+          </svg>
+          히트맵
+        </button>
+        <button class="sidebar-tab" data-tab="analysis" onclick="switchSidebarTab('analysis')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+          </svg>
+          Blind Spot
+        </button>
+        <button class="sidebar-tab" data-tab="history" onclick="switchSidebarTab('history')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+          </svg>
+          히스토리
+        </button>
+      </div>
+
+      <!-- Tab: Heatmap Controls -->
+      <div class="tab-content active" id="tabHeatmap">
+        <div class="sidebar-section">
+          <h3>히트맵 설정</h3>
+          <div class="control-group">
+            <label>투명도 <span id="opacityVal">60%</span></label>
+            <input type="range" id="opacitySlider" min="0" max="100" value="60" />
+          </div>
+          <div class="control-group">
+            <label>컬러맵</label>
+            <select id="colormapSelect">
+              <option value="jet">Jet (기본)</option>
+              <option value="hot">Hot</option>
+              <option value="inferno">Inferno</option>
+              <option value="viridis">Viridis</option>
+              <option value="turbo">Turbo</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label>블러 강도 <span id="blurVal">10</span></label>
+            <input type="range" id="blurSlider" min="3" max="40" value="10" />
+          </div>
+        </div>
+        <div class="sidebar-section">
+          <button class="btn btn-primary" id="analyzeBtn" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M2 12l5 5L20 4"/>
+            </svg>
+            분석 시작
+          </button>
+          <button class="btn btn-secondary" id="reanalyzeBtn" style="margin-top:8px;display:none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 4v6h6M23 20v-6h-6"/>
+              <path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/>
+            </svg>
+            전체 재분석
+          </button>
+          <div class="btn-group" style="margin-top:8px;">
+            <button class="btn btn-secondary" id="downloadBtn" disabled>다운로드</button>
+            <button class="btn btn-secondary" id="clearBtn" disabled>초기화</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Analysis Controls -->
+      <div class="tab-content" id="tabAnalysis">
+        <div class="sidebar-section">
+          <div class="analysis-hint">
+            이미지 위에 <strong>드래그</strong>하여 중요 영역을 마킹하세요.<br/>
+            히트맵 분석 후 영역별 주목도를 비교합니다.
+          </div>
+
+          <h3>마킹 영역 <span id="regionCount"></span></h3>
+          <div id="regionList">
+            <div class="region-empty">
+              마킹된 영역이 없습니다.<br/>이미지 위에서 드래그하세요.
+            </div>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <button class="btn btn-primary" id="blindSpotBtn" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2z"/>
+              <path d="M15 19V9a2 2 0 00-2-2h-2a2 2 0 00-2 2v10"/>
+              <path d="M21 19V5a2 2 0 00-2-2h-2a2 2 0 00-2 2v14"/>
+            </svg>
+            Blind Spot 분석
+          </button>
+          <button class="btn btn-danger" id="clearRegionsBtn" style="margin-top:8px;" disabled>전체 삭제</button>
+        </div>
+
+        <div class="sidebar-section" id="reportSection" style="display:none;">
+          <div class="analysis-report visible" id="analysisReport"></div>
+        </div>
+      </div>
+
+      <!-- Tab: History -->
+      <div class="tab-content" id="tabHistory">
+        <div class="sidebar-section" style="flex:1; overflow-y:auto;">
+          <h3>분석 이력 <span id="historyCount"></span></h3>
+          <div id="historyList">
+            <div class="region-empty">저장된 이력이 없습니다.</div>
+          </div>
+        </div>
+        <div class="sidebar-section">
+          <button class="btn btn-danger" id="clearHistoryBtn" disabled>전체 이력 삭제</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <div class="main">
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <button class="tool-btn active" data-view="overlay" onclick="setView('overlay')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+          </svg>
+          오버레이
+        </button>
+        <button class="tool-btn" data-view="compare" onclick="setView('compare')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="18"/><rect x="14" y="3" width="7" height="18"/>
+          </svg>
+          비교
+        </button>
+        <button class="tool-btn" data-view="heatmap" onclick="setView('heatmap')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>
+          </svg>
+          히트맵만
+        </button>
+        <div class="toolbar-sep"></div>
+        <button class="tool-btn" onclick="zoomIn()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35M11 8v6M8 11h6"/>
+          </svg>
+        </button>
+        <button class="tool-btn" onclick="zoomOut()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35M8 11h6"/>
+          </svg>
+        </button>
+        <button class="tool-btn" onclick="zoomReset()">Fit</button>
+      </div>
+
+      <!-- Canvas -->
+      <div class="canvas-area" id="canvasArea">
+        <!-- Empty state -->
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke="currentColor">
+              <path d="M2.036 12.322a1 1 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178a1 1 0 010 .643C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/>
+              <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+          </div>
+          <h2>AI 시선 예측 분석</h2>
+          <p>UI 스크린샷을 업로드하면<br/>DeepGaze IIE 모델이 사용자 시선 분포를 예측합니다</p>
+        </div>
+
+        <!-- Overlay view -->
+        <div class="viewer" id="overlayViewer">
+          <img id="originalImg" />
+          <canvas class="heatmap-overlay" id="heatmapCanvas"></canvas>
+          <canvas class="drawing-overlay" id="drawingCanvas"></canvas>
+        </div>
+
+        <!-- Compare view -->
+        <div class="compare-container" id="compareViewer">
+          <div class="compare-panel">
+            <img id="compareOriginal" />
+            <div class="compare-label">원본</div>
+          </div>
+          <div class="compare-panel">
+            <img id="compareHeatmap" />
+            <div class="compare-label">히트맵</div>
+          </div>
+        </div>
+
+        <!-- Loading -->
+        <div class="loading-overlay" id="loadingOverlay">
+          <div class="spinner"></div>
+          <div class="loading-text" id="loadingText">DeepGaze IIE 모델 분석 중...</div>
+        </div>
+      </div>
+
+      <!-- Metrics -->
+      <div class="metrics-bar" id="metricsBar">
+        <div class="metric">
+          <span class="metric-label">최대 주목도</span>
+          <span class="metric-value high" id="metricPeak">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">평균 주목도</span>
+          <span class="metric-value medium" id="metricAvg">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">집중 영역 비율</span>
+          <span class="metric-value" id="metricFocus">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">분석 시간</span>
+          <span class="metric-value" id="metricTime">—</span>
+        </div>
+      </div>
+
+      <!-- Insights -->
+      <div class="insights-bar" id="insightsBar"></div>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    const API_URL = 'http://localhost:5000';
+
+    const REGION_COLORS = [
+      '#6366f1', '#ec4899', '#f59e0b', '#10b981', '#8b5cf6',
+      '#ef4444', '#06b6d4', '#f97316', '#14b8a6', '#a855f7',
+    ];
+
+    const state = {
+      files: [],
+      activeIndex: -1,
+      currentView: 'overlay',
+      zoom: 1,
+      sidebarTab: 'heatmap',
+      analysisMode: false,
+      drawing: false,
+      drawStart: null,
+    };
+
+    // --- Server status ---
+    async function checkServer() {
+      try {
+        const res = await fetch(`${API_URL}/health`);
+        if (res.ok) {
+          document.getElementById('statusDot').classList.add('connected');
+          document.getElementById('statusText').textContent = 'DeepGaze IIE 모델 준비됨';
+          return true;
+        }
+      } catch {}
+      document.getElementById('statusDot').classList.remove('connected');
+      document.getElementById('statusText').textContent = '서버 미연결 — python server.py 실행 필요';
+      return false;
+    }
+    checkServer();
+    setInterval(checkServer, 10000);
+
+    // --- Sidebar Tabs ---
+    function switchSidebarTab(tab) {
+      state.sidebarTab = tab;
+      state.analysisMode = tab === 'analysis';
+
+      document.querySelectorAll('.sidebar-tab').forEach(t =>
+        t.classList.toggle('active', t.dataset.tab === tab)
+      );
+      document.getElementById('tabHeatmap').classList.toggle('active', tab === 'heatmap');
+      document.getElementById('tabAnalysis').classList.toggle('active', tab === 'analysis');
+      document.getElementById('tabHistory').classList.toggle('active', tab === 'history');
+
+      const drawCanvas = document.getElementById('drawingCanvas');
+      drawCanvas.classList.toggle('active', state.analysisMode);
+
+      if (state.analysisMode) {
+        resizeDrawingCanvas();
+        renderRegions();
+      }
+      if (tab === 'history') renderHistory();
+      redrawRegions();
+    }
+
+    // --- File upload ---
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+
+    uploadZone.addEventListener('click', () => fileInput.click());
+    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+    uploadZone.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadZone.classList.remove('drag-over');
+      addFiles(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', e => addFiles(e.target.files));
+
+    // --- Clipboard paste ---
+    document.addEventListener('paste', e => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const imageFiles = [];
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) imageFiles.push(file);
+        }
+      }
+      if (imageFiles.length) {
+        e.preventDefault();
+        addFiles(imageFiles);
+        showToast(`${imageFiles.length}개 이미지 붙여넣기 완료`, 'success');
+      }
+    });
+
+    let pasteCounter = 0;
+    function addFiles(fileList) {
+      for (const file of fileList) {
+        if (!file.type.startsWith('image/')) continue;
+        const reader = new FileReader();
+        const fileName = file.name && file.name !== 'image.png'
+          ? file.name
+          : `paste_${++pasteCounter}_${new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}.png`;
+        reader.onload = e => {
+          state.files.push({
+            name: fileName,
+            size: file.size,
+            dataUrl: e.target.result,
+            file: file,
+            status: 'waiting',
+            heatmapUrl: null,
+            metrics: null,
+            regions: [],
+            regionAnalyzed: false,
+          });
+          renderFileList();
+          updateButtons();
+          if (state.activeIndex === -1) selectFile(state.files.length - 1);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function renderFileList() {
+      const list = document.getElementById('fileList');
+      document.getElementById('fileCount').textContent = state.files.length ? `(${state.files.length})` : '';
+      list.innerHTML = state.files.map((f, i) => `
+        <div class="file-item ${i === state.activeIndex ? 'active' : ''}" onclick="selectFile(${i})">
+          <img class="file-thumb" src="${f.dataUrl}" />
+          <div class="file-info">
+            <div class="file-name">${f.name}</div>
+            <div class="file-meta">${formatSize(f.size)}</div>
+          </div>
+          <span class="file-status ${f.status}">${statusLabel(f.status)}</span>
+          <button class="file-remove" onclick="event.stopPropagation();removeFile(${i})">&times;</button>
+        </div>
+      `).join('');
+    }
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    function statusLabel(s) {
+      return { waiting: '대기', analyzing: '분석 중...', done: '완료' }[s] || s;
+    }
+
+    function selectFile(i) {
+      state.activeIndex = i;
+      renderFileList();
+      showImage();
+      if (state.analysisMode) {
+        renderRegions();
+        redrawRegions();
+      }
+    }
+
+    function removeFile(i) {
+      state.files.splice(i, 1);
+      if (state.activeIndex >= state.files.length) state.activeIndex = state.files.length - 1;
+      renderFileList();
+      updateButtons();
+      showImage();
+    }
+
+    function updateButtons() {
+      const has = state.files.length > 0;
+      document.getElementById('analyzeBtn').disabled = !has;
+      document.getElementById('clearBtn').disabled = !has;
+      document.getElementById('downloadBtn').disabled = !state.files.some(f => f.heatmapUrl);
+      const hasDone = state.files.some(f => f.status === 'done');
+      document.getElementById('reanalyzeBtn').style.display = hasDone ? '' : 'none';
+      updateAnalysisButtons();
+    }
+
+    function updateAnalysisButtons() {
+      const f = state.files[state.activeIndex];
+      const hasRegions = f && f.regions.length > 0;
+      const hasHeatmap = f && f.heatmapUrl;
+      document.getElementById('blindSpotBtn').disabled = !(hasRegions && hasHeatmap);
+      document.getElementById('clearRegionsBtn').disabled = !hasRegions;
+    }
+
+    // --- Image display ---
+    function showImage() {
+      const f = state.files[state.activeIndex];
+      const empty = document.getElementById('emptyState');
+      const overlay = document.getElementById('overlayViewer');
+      const compare = document.getElementById('compareViewer');
+
+      if (!f) {
+        empty.style.display = '';
+        overlay.classList.remove('visible');
+        compare.classList.remove('visible');
+        document.getElementById('metricsBar').classList.remove('visible');
+        return;
+      }
+
+      empty.style.display = 'none';
+      setView(state.currentView);
+    }
+
+    function setView(view) {
+      state.currentView = view;
+      document.querySelectorAll('.tool-btn[data-view]').forEach(b =>
+        b.classList.toggle('active', b.dataset.view === view)
+      );
+
+      const f = state.files[state.activeIndex];
+      if (!f) return;
+
+      const overlay = document.getElementById('overlayViewer');
+      const compare = document.getElementById('compareViewer');
+
+      overlay.classList.remove('visible');
+      compare.classList.remove('visible');
+
+      if (view === 'overlay' || view === 'heatmap') {
+        overlay.classList.add('visible');
+        const origImg = document.getElementById('originalImg');
+        origImg.src = view === 'heatmap' && f.heatmapUrl ? '' : f.dataUrl;
+        origImg.style.opacity = view === 'heatmap' ? 0 : 1;
+        origImg.onload = () => {
+          updateHeatmapCanvas(f);
+          resizeDrawingCanvas();
+          redrawRegions();
+        };
+
+        if (!f.heatmapUrl) {
+          origImg.src = f.dataUrl;
+          origImg.style.opacity = 1;
+        }
+      } else if (view === 'compare') {
+        compare.classList.add('visible');
+        document.getElementById('compareOriginal').src = f.dataUrl;
+        document.getElementById('compareHeatmap').src = f.heatmapUrl || f.dataUrl;
+      }
+
+      const drawCanvas = document.getElementById('drawingCanvas');
+      drawCanvas.classList.toggle('active', state.analysisMode && (view === 'overlay' || view === 'heatmap'));
+
+      if (f.metrics) showMetrics(f.metrics);
+      else document.getElementById('metricsBar').classList.remove('visible');
+    }
+
+    function updateHeatmapCanvas(f) {
+      const canvas = document.getElementById('heatmapCanvas');
+      const img = document.getElementById('originalImg');
+      if (!f || !f.heatmapUrl) {
+        canvas.style.opacity = 0;
+        return;
+      }
+
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      canvas.style.width = img.clientWidth + 'px';
+      canvas.style.height = img.clientHeight + 'px';
+
+      const ctx = canvas.getContext('2d');
+      const heatImg = new Image();
+      heatImg.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(heatImg, 0, 0, canvas.width, canvas.height);
+        const opacity = document.getElementById('opacitySlider').value / 100;
+        canvas.style.opacity = state.currentView === 'heatmap' ? 1 : opacity;
+      };
+      heatImg.src = f.heatmapUrl;
+    }
+
+    // --- Controls ---
+    document.getElementById('opacitySlider').addEventListener('input', e => {
+      document.getElementById('opacityVal').textContent = e.target.value + '%';
+      const canvas = document.getElementById('heatmapCanvas');
+      if (state.currentView !== 'heatmap') canvas.style.opacity = e.target.value / 100;
+    });
+
+    document.getElementById('blurSlider').addEventListener('input', e => {
+      document.getElementById('blurVal').textContent = e.target.value;
+    });
+
+    document.getElementById('colormapSelect').addEventListener('change', () => {
+      const f = state.files[state.activeIndex];
+      if (f && f.status === 'done') reanalyze(state.activeIndex);
+    });
+
+    // --- Analysis ---
+    document.getElementById('analyzeBtn').addEventListener('click', analyzeAll);
+    document.getElementById('reanalyzeBtn').addEventListener('click', reanalyzeAll);
+
+    async function analyzeAll() {
+      const online = await checkServer();
+      if (!online) {
+        showToast('서버에 연결할 수 없습니다. python server.py를 실행하세요.', 'error');
+        return;
+      }
+
+      const toAnalyze = state.files.filter(f => f.status !== 'done');
+      if (!toAnalyze.length) {
+        showToast('모든 파일이 이미 분석되었습니다.', 'success');
+        return;
+      }
+
+      for (let i = 0; i < state.files.length; i++) {
+        if (state.files[i].status === 'done') continue;
+        await analyzeSingle(i);
+      }
+
+      showToast(`${toAnalyze.length}개 파일 분석 완료`, 'success');
+      updateButtons();
+    }
+
+    async function reanalyzeAll() {
+      const online = await checkServer();
+      if (!online) {
+        showToast('서버에 연결할 수 없습니다. python server.py를 실행하세요.', 'error');
+        return;
+      }
+
+      state.files.forEach(f => {
+        f.status = 'waiting';
+        f.heatmapUrl = null;
+        f.metrics = null;
+        f.regionAnalyzed = false;
+      });
+      renderFileList();
+
+      for (let i = 0; i < state.files.length; i++) {
+        await analyzeSingle(i);
+      }
+
+      showToast(`${state.files.length}개 파일 전체 재분석 완료`, 'success');
+      updateButtons();
+    }
+
+    async function analyzeSingle(idx) {
+      const f = state.files[idx];
+      f.status = 'analyzing';
+      renderFileList();
+      selectFile(idx);
+      showLoading(true, `분석 중: ${f.name}`);
+
+      const startTime = performance.now();
+      const formData = new FormData();
+      formData.append('image', f.file);
+      formData.append('colormap', document.getElementById('colormapSelect').value);
+      formData.append('blur', document.getElementById('blurSlider').value);
+
+      try {
+        const res = await fetch(`${API_URL}/analyze`, { method: 'POST', body: formData });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
+
+        f.status = 'done';
+        f.heatmapUrl = 'data:image/png;base64,' + data.heatmap;
+        f.metrics = { ...data.metrics, time: elapsed + 's' };
+        f.insights = data.insights || [];
+        f.regionAnalyzed = false;
+        renderFileList();
+        showImage();
+        showMetrics(f.metrics);
+        showInsights(f.insights);
+        saveToHistory(f);
+      } catch (err) {
+        f.status = 'waiting';
+        renderFileList();
+        showToast('분석 실패: ' + err.message, 'error');
+      }
+      showLoading(false);
+    }
+
+    async function reanalyze(idx) {
+      state.files[idx].status = 'waiting';
+      state.files[idx].heatmapUrl = null;
+      await analyzeSingle(idx);
+      updateButtons();
+    }
+
+    // --- Metrics ---
+    function showMetrics(m) {
+      if (!m) return;
+      document.getElementById('metricsBar').classList.add('visible');
+      document.getElementById('metricPeak').textContent = m.peak_attention || '—';
+      document.getElementById('metricAvg').textContent = m.avg_attention || '—';
+      document.getElementById('metricFocus').textContent = m.focus_ratio || '—';
+      document.getElementById('metricTime').textContent = m.time || '—';
+    }
+
+    // --- Insights ---
+    function showInsights(insights) {
+      const bar = document.getElementById('insightsBar');
+      if (!insights || !insights.length) {
+        bar.classList.remove('visible');
+        return;
+      }
+      bar.classList.add('visible');
+      bar.innerHTML = insights.map(ins => `
+        <div class="insight-card">
+          <div class="insight-title">
+            <div class="insight-icon ${ins.type}"></div>
+            ${ins.title}
+          </div>
+          <div class="insight-desc">${ins.desc}</div>
+          <div class="insight-detail">${ins.detail}</div>
+          ${ins.principle ? `<div class="insight-ref"><span class="insight-principle">${ins.principle}</span>${ins.ref ? ` — <span class="insight-source">${ins.ref}</span>` : ''}</div>` : ''}
+        </div>
+      `).join('');
+    }
+
+    // --- History (IndexedDB) ---
+    const DB_NAME = 'ux-heatmap-history';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'analyses';
+
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = e => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            const store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+            store.createIndex('date', 'date');
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function saveToHistory(f) {
+      try {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).add({
+          name: f.name,
+          date: new Date().toISOString(),
+          originalUrl: f.originalUrl,
+          heatmapUrl: f.heatmapUrl,
+          metrics: f.metrics,
+          insights: f.insights || [],
+        });
+        await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = rej; });
+        db.close();
+        document.getElementById('clearHistoryBtn').disabled = false;
+      } catch (e) {
+        console.error('History save failed', e);
+      }
+    }
+
+    async function loadHistory() {
+      try {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.getAll();
+        return new Promise((res, rej) => {
+          req.onsuccess = () => { db.close(); res(req.result.reverse()); };
+          req.onerror = () => { db.close(); rej(req.error); };
+        });
+      } catch { return []; }
+    }
+
+    async function deleteHistoryItem(id) {
+      const db = await openDB();
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).delete(id);
+      await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = rej; });
+      db.close();
+      renderHistory();
+    }
+
+    async function clearHistory() {
+      const db = await openDB();
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).clear();
+      await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = rej; });
+      db.close();
+      renderHistory();
+    }
+
+    function restoreFromHistory(item) {
+      const f = {
+        name: item.name,
+        file: null,
+        originalUrl: item.originalUrl,
+        heatmapUrl: item.heatmapUrl,
+        status: 'done',
+        metrics: item.metrics,
+        insights: item.insights || [],
+        regionAnalyzed: false,
+      };
+      state.files.push(f);
+      state.selectedIndex = state.files.length - 1;
+      renderFileList();
+      showImage();
+      showMetrics(f.metrics);
+      showInsights(f.insights);
+      switchSidebarTab('heatmap');
+      showToast('이력에서 복원되었습니다.');
+    }
+
+    async function renderHistory() {
+      const list = document.getElementById('historyList');
+      const items = await loadHistory();
+      const clearBtn = document.getElementById('clearHistoryBtn');
+      clearBtn.disabled = items.length === 0;
+
+      if (items.length === 0) {
+        list.innerHTML = '<div style="text-align:center;color:#999;padding:24px;">분석 이력이 없습니다.</div>';
+        return;
+      }
+
+      list.innerHTML = items.map(item => {
+        const d = new Date(item.date);
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+        return `
+          <div class="history-item" style="display:flex;gap:8px;padding:8px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:6px;cursor:pointer;background:#fff;transition:background .15s" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='#fff'">
+            <img src="${item.heatmapUrl || item.originalUrl}" style="width:48px;height:48px;object-fit:cover;border-radius:4px;flex-shrink:0" />
+            <div style="flex:1;min-width:0;overflow:hidden">
+              <div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.name}</div>
+              <div style="font-size:10px;color:#9ca3af">${dateStr}</div>
+              <div style="font-size:10px;color:#6b7280;margin-top:2px">Peak ${item.metrics?.peak_attention || '—'} | Focus ${item.metrics?.focus_ratio || '—'}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+              <button onclick="event.stopPropagation();restoreFromHistory(${JSON.stringify(item).replace(/"/g, '&quot;')})" style="font-size:10px;padding:2px 6px;border:1px solid #3b82f6;color:#3b82f6;background:none;border-radius:4px;cursor:pointer">복원</button>
+              <button onclick="event.stopPropagation();deleteHistoryItem(${item.id})" style="font-size:10px;padding:2px 6px;border:1px solid #ef4444;color:#ef4444;background:none;border-radius:4px;cursor:pointer">삭제</button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    document.getElementById('clearHistoryBtn').addEventListener('click', () => {
+      if (confirm('모든 분석 이력을 삭제하시겠습니까?')) clearHistory();
+    });
+
+    // --- Zoom ---
+    function zoomIn() {
+      state.zoom = Math.min(state.zoom * 1.2, 5);
+      applyZoom();
+    }
+    function zoomOut() {
+      state.zoom = Math.max(state.zoom / 1.2, 0.2);
+      applyZoom();
+    }
+    function zoomReset() {
+      state.zoom = 1;
+      applyZoom();
+    }
+    function applyZoom() {
+      const viewer = document.getElementById('overlayViewer');
+      const compare = document.getElementById('compareViewer');
+      viewer.style.transform = `scale(${state.zoom})`;
+      compare.style.transform = `scale(${state.zoom})`;
+    }
+
+    // --- Download ---
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+      const f = state.files[state.activeIndex];
+      if (!f || !f.heatmapUrl) return;
+
+      const canvas = document.createElement('canvas');
+      const img = new Image();
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+
+        const orig = new Image();
+        orig.onload = () => {
+          ctx.drawImage(orig, 0, 0, canvas.width, canvas.height);
+          ctx.globalAlpha = document.getElementById('opacitySlider').value / 100;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          const a = document.createElement('a');
+          a.download = `heatmap_${f.name}`;
+          a.href = canvas.toDataURL('image/png');
+          a.click();
+        };
+        orig.src = f.dataUrl;
+      };
+      img.src = f.heatmapUrl;
+    });
+
+    // --- Clear ---
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      state.files = [];
+      state.activeIndex = -1;
+      renderFileList();
+      updateButtons();
+      showImage();
+      renderRegions();
+    });
+
+    // --- UI Helpers ---
+    function showLoading(show, text) {
+      const el = document.getElementById('loadingOverlay');
+      el.classList.toggle('visible', show);
+      if (text) document.getElementById('loadingText').textContent = text;
+    }
+
+    function showToast(message, type = '') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+
+    // ===================================================
+    //  ANALYSIS MODE — Blind Spot Detection
+    // ===================================================
+
+    // --- Drawing Canvas ---
+    function resizeDrawingCanvas() {
+      const drawCanvas = document.getElementById('drawingCanvas');
+      const img = document.getElementById('originalImg');
+      if (!img.clientWidth) return;
+      drawCanvas.width = img.clientWidth;
+      drawCanvas.height = img.clientHeight;
+      drawCanvas.style.width = img.clientWidth + 'px';
+      drawCanvas.style.height = img.clientHeight + 'px';
+    }
+
+    const drawCanvas = document.getElementById('drawingCanvas');
+
+    drawCanvas.addEventListener('mousedown', e => {
+      if (!state.analysisMode) return;
+      const f = state.files[state.activeIndex];
+      if (!f) return;
+
+      const rect = drawCanvas.getBoundingClientRect();
+      state.drawing = true;
+      state.drawStart = {
+        x: (e.clientX - rect.left) / rect.width,
+        y: (e.clientY - rect.top) / rect.height,
+      };
+    });
+
+    drawCanvas.addEventListener('mousemove', e => {
+      if (!state.drawing) return;
+      const rect = drawCanvas.getBoundingClientRect();
+      const cur = {
+        x: (e.clientX - rect.left) / rect.width,
+        y: (e.clientY - rect.top) / rect.height,
+      };
+      redrawRegions(cur);
+    });
+
+    drawCanvas.addEventListener('mouseup', e => {
+      if (!state.drawing) return;
+      state.drawing = false;
+
+      const f = state.files[state.activeIndex];
+      if (!f) return;
+
+      const rect = drawCanvas.getBoundingClientRect();
+      const end = {
+        x: (e.clientX - rect.left) / rect.width,
+        y: (e.clientY - rect.top) / rect.height,
+      };
+
+      const x1 = Math.min(state.drawStart.x, end.x);
+      const y1 = Math.min(state.drawStart.y, end.y);
+      const x2 = Math.max(state.drawStart.x, end.x);
+      const y2 = Math.max(state.drawStart.y, end.y);
+
+      const w = x2 - x1;
+      const h = y2 - y1;
+      if (w < 0.01 || h < 0.01) {
+        redrawRegions();
+        return;
+      }
+
+      const colorIdx = f.regions.length % REGION_COLORS.length;
+      f.regions.push({
+        name: `영역 ${f.regions.length + 1}`,
+        x: x1, y: y1, w, h,
+        color: REGION_COLORS[colorIdx],
+        score: null,
+        grade: null,
+      });
+
+      f.regionAnalyzed = false;
+      renderRegions();
+      redrawRegions();
+      updateAnalysisButtons();
+      hideReport();
+    });
+
+    drawCanvas.addEventListener('mouseleave', () => {
+      if (state.drawing) {
+        state.drawing = false;
+        redrawRegions();
+      }
+    });
+
+    function redrawRegions(tempEnd) {
+      const canvas = document.getElementById('drawingCanvas');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const f = state.files[state.activeIndex];
+      if (!f) return;
+
+      f.regions.forEach((r, i) => {
+        const px = r.x * canvas.width;
+        const py = r.y * canvas.height;
+        const pw = r.w * canvas.width;
+        const ph = r.h * canvas.height;
+
+        ctx.strokeStyle = r.color;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([]);
+
+        if (r.score !== null) {
+          let fillColor;
+          if (r.grade === 'blind') fillColor = 'rgba(239, 68, 68, 0.15)';
+          else if (r.grade === 'caution') fillColor = 'rgba(251, 191, 36, 0.15)';
+          else if (r.grade === 'good') fillColor = 'rgba(34, 197, 94, 0.15)';
+          else fillColor = 'rgba(99, 102, 241, 0.15)';
+          ctx.fillStyle = fillColor;
+          ctx.fillRect(px, py, pw, ph);
+        }
+
+        ctx.strokeRect(px, py, pw, ph);
+
+        ctx.fillStyle = r.color;
+        const labelText = r.score !== null ? `${r.name} (${Math.round(r.score)}%)` : r.name;
+        ctx.font = 'bold 12px Segoe UI, sans-serif';
+        const tm = ctx.measureText(labelText);
+        const lh = 18;
+        const lx = px;
+        const ly = py - lh - 2;
+
+        ctx.globalAlpha = 0.85;
+        ctx.fillRect(lx, ly < 0 ? py : ly, tm.width + 10, lh);
+        ctx.globalAlpha = 1;
+
+        ctx.fillStyle = '#fff';
+        ctx.fillText(labelText, lx + 5, (ly < 0 ? py + lh - 4 : ly + lh - 4));
+      });
+
+      if (state.drawing && tempEnd) {
+        const s = state.drawStart;
+        const px = Math.min(s.x, tempEnd.x) * canvas.width;
+        const py = Math.min(s.y, tempEnd.y) * canvas.height;
+        const pw = Math.abs(tempEnd.x - s.x) * canvas.width;
+        const ph = Math.abs(tempEnd.y - s.y) * canvas.height;
+
+        ctx.strokeStyle = '#6366f1';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 3]);
+        ctx.strokeRect(px, py, pw, ph);
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(99, 102, 241, 0.1)';
+        ctx.fillRect(px, py, pw, ph);
+      }
+    }
+
+    // --- Region list in sidebar ---
+    function renderRegions() {
+      const f = state.files[state.activeIndex];
+      const list = document.getElementById('regionList');
+      const countEl = document.getElementById('regionCount');
+
+      if (!f || f.regions.length === 0) {
+        countEl.textContent = '';
+        list.innerHTML = '<div class="region-empty">마킹된 영역이 없습니다.<br/>이미지 위에서 드래그하세요.</div>';
+        return;
+      }
+
+      countEl.textContent = `(${f.regions.length})`;
+      list.innerHTML = f.regions.map((r, i) => `
+        <div class="region-item" onmouseenter="highlightRegion(${i})" onmouseleave="redrawRegions()">
+          <div class="region-color" style="background:${r.color}"></div>
+          <input class="region-name-input" value="${r.name}"
+            placeholder="영역 이름"
+            onchange="renameRegion(${i}, this.value)" />
+          ${r.score !== null ? `<span class="region-score ${r.grade}">${Math.round(r.score)}%</span>` : ''}
+          <button class="region-remove" onclick="removeRegion(${i})">&times;</button>
+        </div>
+      `).join('');
+
+      updateAnalysisButtons();
+    }
+
+    function renameRegion(i, name) {
+      const f = state.files[state.activeIndex];
+      if (f) {
+        f.regions[i].name = name || `영역 ${i + 1}`;
+        redrawRegions();
+      }
+    }
+
+    function removeRegion(i) {
+      const f = state.files[state.activeIndex];
+      if (!f) return;
+      f.regions.splice(i, 1);
+      f.regionAnalyzed = false;
+      renderRegions();
+      redrawRegions();
+      updateAnalysisButtons();
+      hideReport();
+    }
+
+    function highlightRegion(i) {
+      const f = state.files[state.activeIndex];
+      if (!f) return;
+
+      const canvas = document.getElementById('drawingCanvas');
+      const ctx = canvas.getContext('2d');
+
+      redrawRegions();
+
+      const r = f.regions[i];
+      const px = r.x * canvas.width;
+      const py = r.y * canvas.height;
+      const pw = r.w * canvas.width;
+      const ph = r.h * canvas.height;
+
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([]);
+      ctx.strokeRect(px - 1, py - 1, pw + 2, ph + 2);
+    }
+
+    document.getElementById('clearRegionsBtn').addEventListener('click', () => {
+      const f = state.files[state.activeIndex];
+      if (!f) return;
+      f.regions = [];
+      f.regionAnalyzed = false;
+      renderRegions();
+      redrawRegions();
+      updateAnalysisButtons();
+      hideReport();
+    });
+
+    // --- Blind Spot Analysis Engine ---
+    document.getElementById('blindSpotBtn').addEventListener('click', runBlindSpotAnalysis);
+
+    async function runBlindSpotAnalysis() {
+      const f = state.files[state.activeIndex];
+      if (!f || !f.heatmapUrl || f.regions.length === 0) return;
+
+      showToast('Blind Spot 분석 중...', '');
+
+      const heatmapData = await getHeatmapPixelData(f.heatmapUrl);
+      if (!heatmapData) {
+        showToast('히트맵 데이터를 읽을 수 없습니다.', 'error');
+        return;
+      }
+
+      const { data: pixels, width: hw, height: hh } = heatmapData;
+
+      f.regions.forEach(r => {
+        const px = Math.round(r.x * hw);
+        const py = Math.round(r.y * hh);
+        const pw = Math.round(r.w * hw);
+        const ph = Math.round(r.h * hh);
+
+        let totalAlpha = 0;
+        let count = 0;
+
+        for (let y = py; y < py + ph && y < hh; y++) {
+          for (let x = px; x < px + pw && x < hw; x++) {
+            const idx = (y * hw + x) * 4;
+            totalAlpha += pixels[idx + 3];
+            count++;
+          }
+        }
+
+        const avgAlpha = count > 0 ? totalAlpha / count : 0;
+        const score = (avgAlpha / 255) * 100;
+
+        r.score = score;
+        if (score < 15) r.grade = 'blind';
+        else if (score < 40) r.grade = 'caution';
+        else if (score < 70) r.grade = 'good';
+        else r.grade = 'excellent';
+      });
+
+      f.regionAnalyzed = true;
+      renderRegions();
+      redrawRegions();
+      showReport(f);
+      showToast('Blind Spot 분석 완료!', 'success');
+    }
+
+    function getHeatmapPixelData(heatmapUrl) {
+      return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+          const c = document.createElement('canvas');
+          c.width = img.width;
+          c.height = img.height;
+          const ctx = c.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          const imageData = ctx.getImageData(0, 0, c.width, c.height);
+          resolve({ data: imageData.data, width: c.width, height: c.height });
+        };
+        img.onerror = () => resolve(null);
+        img.src = heatmapUrl;
+      });
+    }
+
+    // --- Report ---
+    function showReport(f) {
+      const section = document.getElementById('reportSection');
+      const report = document.getElementById('analysisReport');
+      section.style.display = '';
+
+      const blindSpots = f.regions.filter(r => r.grade === 'blind');
+      const cautions = f.regions.filter(r => r.grade === 'caution');
+      const goods = f.regions.filter(r => r.grade === 'good' || r.grade === 'excellent');
+
+      const avgScore = f.regions.reduce((s, r) => s + r.score, 0) / f.regions.length;
+
+      const gradeLabel = g => ({ blind: '사각지대', caution: '주의 필요', good: '적정', excellent: '높은 주목' }[g]);
+
+      let verdictHtml = '';
+      if (blindSpots.length > 0) {
+        verdictHtml = `
+          <div class="report-verdict warn">
+            <strong>사각지대 발견!</strong><br/>
+            ${blindSpots.map(r => `<span style="color:var(--danger)">${r.name}</span>`).join(', ')}
+            영역의 주목도가 매우 낮습니다.<br/>
+            → 레이아웃 변경 또는 시각적 강조가 필요합니다.
+          </div>`;
+      } else if (cautions.length > 0) {
+        verdictHtml = `
+          <div class="report-verdict warn">
+            <strong>주의 영역 존재</strong><br/>
+            ${cautions.map(r => `${r.name}(${Math.round(r.score)}%)`).join(', ')}
+            — 주목도가 낮은 편입니다.<br/>
+            → 시각적 가중치(색상, 크기, 위치) 조정을 검토하세요.
+          </div>`;
+      } else {
+        verdictHtml = `
+          <div class="report-verdict ok">
+            <strong>양호</strong><br/>
+            모든 중요 영역이 적절한 주목도를 확보하고 있습니다.
+          </div>`;
+      }
+
+      report.innerHTML = `
+        <div class="report-title">분석 결과</div>
+        <div class="report-summary">
+          <div class="report-card">
+            <div class="report-card-label">평균 주목도</div>
+            <div class="report-card-value" style="color:${avgScore < 30 ? 'var(--danger)' : avgScore < 60 ? 'var(--warning)' : 'var(--success)'}">${Math.round(avgScore)}%</div>
+          </div>
+          <div class="report-card">
+            <div class="report-card-label">사각지대</div>
+            <div class="report-card-value" style="color:${blindSpots.length ? 'var(--danger)' : 'var(--success)'}">${blindSpots.length}개</div>
+          </div>
+          <div class="report-card">
+            <div class="report-card-label">주의 필요</div>
+            <div class="report-card-value" style="color:${cautions.length ? 'var(--warning)' : 'var(--success)'}">${cautions.length}개</div>
+          </div>
+          <div class="report-card">
+            <div class="report-card-label">양호</div>
+            <div class="report-card-value" style="color:var(--success)">${goods.length}개</div>
+          </div>
+        </div>
+
+        <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:12px;">
+          <tr style="color:var(--text-dim);border-bottom:1px solid var(--border);">
+            <td style="padding:6px 4px;">영역</td>
+            <td style="padding:6px 4px;text-align:right;">주목도</td>
+            <td style="padding:6px 4px;text-align:right;">판정</td>
+          </tr>
+          ${f.regions.map(r => `
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:6px 4px;"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${r.color};margin-right:6px;vertical-align:middle;"></span>${r.name}</td>
+              <td style="padding:6px 4px;text-align:right;font-weight:600;">${Math.round(r.score)}%</td>
+              <td style="padding:6px 4px;text-align:right;"><span class="region-score ${r.grade}" style="font-size:11px;">${gradeLabel(r.grade)}</span></td>
+            </tr>
+          `).join('')}
+        </table>
+
+        ${verdictHtml}
+      `;
+    }
+
+    function hideReport() {
+      document.getElementById('reportSection').style.display = 'none';
+    }
+
+    // --- Window resize ---
+    window.addEventListener('resize', () => {
+      resizeDrawingCanvas();
+      redrawRegions();
+    });
+  </script>
+</body>
+</html>

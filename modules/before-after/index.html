@@ -91,6 +91,26 @@
       </ul>
     </div>
 
+    <!-- Template Section -->
+    <div class="card fade-in">
+      <div class="card-header">📁 템플릿</div>
+      <div class="card-body">
+        <div class="flex-between">
+          <div class="flex gap-8" style="flex:1; align-items:center;">
+            <select class="select" id="templateSelect" style="max-width:300px;">
+              <option value="">저장된 템플릿 선택...</option>
+            </select>
+            <button class="btn btn-sm btn-secondary" id="loadTemplateBtn" disabled>불러오기</button>
+            <button class="btn btn-sm btn-danger" id="deleteTemplateBtn" disabled>삭제</button>
+          </div>
+          <div class="flex gap-8">
+            <input type="text" class="input input-sm" id="templateName" placeholder="템플릿 이름" style="width:180px;">
+            <button class="btn btn-sm btn-primary" id="saveTemplateBtn">저장</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Input Section -->
     <div class="card fade-in">
       <div class="card-header">지표 입력</div>
@@ -582,11 +602,82 @@
       renderHistory();
     });
 
+    // ── Templates ──
+    function refreshTemplates() {
+      const sel = $('templateSelect');
+      const templates = UXStorage.getTemplates('before-after');
+      sel.innerHTML = '<option value="">저장된 템플릿 선택...</option>';
+      templates.forEach(t => {
+        sel.innerHTML += `<option value="${t.id}">${escapeHtml(t.name)} (${UXDate.format(t.createdAt)})</option>`;
+      });
+      $('loadTemplateBtn').disabled = true;
+      $('deleteTemplateBtn').disabled = true;
+    }
+
+    $('templateSelect').addEventListener('change', function() {
+      const hasVal = !!this.value;
+      $('loadTemplateBtn').disabled = !hasVal;
+      $('deleteTemplateBtn').disabled = !hasVal;
+    });
+
+    $('saveTemplateBtn').addEventListener('click', function() {
+      const name = $('templateName').value.trim();
+      if (!name) { alert('템플릿 이름을 입력하세요.'); return; }
+      // Sync current input state before saving
+      $('metricsContainer').querySelectorAll('.metric-row').forEach(row => {
+        const id = parseInt(row.dataset.id);
+        const m = metrics.find(m => m.id === id);
+        if (!m) return;
+        row.querySelectorAll('[data-field]').forEach(input => {
+          const field = input.dataset.field;
+          if (field === 'asis' || field === 'tobe') {
+            m[field] = input.value !== '' ? parseFloat(input.value) : undefined;
+          } else {
+            m[field] = input.value;
+          }
+        });
+      });
+      const data = {
+        label: $('projectLabel').value.trim(),
+        metrics: metrics.map(m => ({ name: m.name || '', direction: m.direction || 'higher', asis: m.asis, tobe: m.tobe, unit: m.unit || '' })),
+      };
+      UXStorage.saveTemplate('before-after', name, data);
+      $('templateName').value = '';
+      refreshTemplates();
+    });
+
+    $('loadTemplateBtn').addEventListener('click', function() {
+      const id = $('templateSelect').value;
+      const tpl = UXStorage.loadTemplate('before-after', id);
+      if (tpl) {
+        $('projectLabel').value = tpl.data.label || '';
+        metricIdCounter = 0;
+        metrics = (tpl.data.metrics || []).map(m => ({
+          id: ++metricIdCounter,
+          name: m.name,
+          direction: m.direction,
+          asis: m.asis,
+          tobe: m.tobe,
+          unit: m.unit,
+        }));
+        renderMetricRows();
+      }
+    });
+
+    $('deleteTemplateBtn').addEventListener('click', function() {
+      const id = $('templateSelect').value;
+      if (id && confirm('이 템플릿을 삭제하시겠습니까?')) {
+        UXStorage.deleteTemplate('before-after', id);
+        refreshTemplates();
+      }
+    });
+
     // ── Init ──
     // Add default sample rows
     addMetricRow({ name: 'SUS 점수', direction: 'higher', asis: undefined, tobe: undefined, unit: '점' });
     addMetricRow({ name: '태스크 완료 시간', direction: 'lower', asis: undefined, tobe: undefined, unit: '초' });
     addMetricRow({ name: '오류 횟수', direction: 'lower', asis: undefined, tobe: undefined, unit: '회' });
+    refreshTemplates();
     renderHistory();
   </script>
 </body>

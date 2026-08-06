@@ -180,6 +180,26 @@
       </div>
     </div>
 
+    <!-- Template Section -->
+    <div class="card fade-in">
+      <div class="card-header">📁 템플릿</div>
+      <div class="card-body">
+        <div class="flex-between">
+          <div class="flex gap-8" style="flex:1; align-items:center;">
+            <select class="select" id="templateSelect" style="max-width:300px;" onchange="onTemplateSelectChange()">
+              <option value="">저장된 템플릿 선택...</option>
+            </select>
+            <button class="btn btn-sm btn-secondary" id="loadTemplateBtn" disabled onclick="loadTemplateData()">불러오기</button>
+            <button class="btn btn-sm btn-danger" id="deleteTemplateBtn" disabled onclick="deleteTemplateData()">삭제</button>
+          </div>
+          <div class="flex gap-8">
+            <input type="text" class="input input-sm" id="templateName" placeholder="템플릿 이름" style="width:180px;">
+            <button class="btn btn-sm btn-primary" id="saveTemplateBtn" onclick="saveTemplateData()">저장</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Input Section -->
     <div class="card fade-in">
       <div class="card-header">평가 정보</div>
@@ -769,10 +789,90 @@
       renderHistoryList();
     }
 
+    // ── Template ──
+    function onTemplateSelectChange() {
+      const val = document.getElementById('templateSelect').value;
+      document.getElementById('loadTemplateBtn').disabled = !val;
+      document.getElementById('deleteTemplateBtn').disabled = !val;
+    }
+
+    function refreshTemplateList() {
+      const templates = UXStorage.getTemplates('heuristic');
+      const select = document.getElementById('templateSelect');
+      select.innerHTML = '<option value="">저장된 템플릿 선택...</option>';
+      templates.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = `${t.name} (${UXDate.format(t.createdAt)})`;
+        select.appendChild(opt);
+      });
+      document.getElementById('loadTemplateBtn').disabled = true;
+      document.getElementById('deleteTemplateBtn').disabled = true;
+    }
+
+    function saveTemplateData() {
+      const nameInput = document.getElementById('templateName');
+      const name = nameInput.value.trim();
+      if (!name) {
+        nameInput.style.borderColor = 'var(--danger)';
+        nameInput.focus();
+        return;
+      }
+      nameInput.style.borderColor = '';
+
+      UXStorage.saveTemplate('heuristic', name, {
+        projectLabel: document.getElementById('projectLabel').value,
+        issues: issues.map(x => ({
+          hIdx: x.hIdx,
+          description: x.description,
+          severity: x.severity,
+          location: x.location,
+        })),
+      });
+
+      nameInput.value = '';
+      refreshTemplateList();
+      alert('템플릿이 저장되었습니다.');
+    }
+
+    function loadTemplateData() {
+      const id = document.getElementById('templateSelect').value;
+      if (!id) return;
+      const tpl = UXStorage.loadTemplate('heuristic', id);
+      if (!tpl) return;
+
+      const data = tpl.data;
+      document.getElementById('projectLabel').value = data.projectLabel || '';
+
+      if (data.issues) {
+        issues = data.issues.map(x => ({
+          id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+          hIdx: x.hIdx,
+          description: x.description,
+          severity: x.severity,
+          location: x.location || '',
+        }));
+      } else {
+        issues = [];
+      }
+
+      renderHeuristics();
+      updateAnalysis();
+    }
+
+    function deleteTemplateData() {
+      const id = document.getElementById('templateSelect').value;
+      if (!id) return;
+      if (!confirm('이 템플릿을 삭제하시겠습니까?')) return;
+      UXStorage.deleteTemplate('heuristic', id);
+      refreshTemplateList();
+    }
+
     // ── Init ──
     renderHeuristics();
     renderHistoryList();
     setRadarMode('max');
+    refreshTemplateList();
   </script>
 </body>
 </html>

@@ -96,6 +96,38 @@ const UXStorage = {
         localStorage.setItem(k, JSON.stringify(v));
       }
     });
+  },
+
+  /* ── Template Management ── */
+  saveTemplate(module, name, data) {
+    const templates = this.getTemplates(module);
+    templates.unshift({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name,
+      data,
+      createdAt: new Date().toISOString(),
+    });
+    if (templates.length > 50) templates.length = 50;
+    localStorage.setItem(this._key(module, 'templates'), JSON.stringify(templates));
+  },
+
+  getTemplates(module) {
+    try {
+      const raw = localStorage.getItem(this._key(module, 'templates'));
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  loadTemplate(module, id) {
+    const templates = this.getTemplates(module);
+    return templates.find(t => t.id === id) || null;
+  },
+
+  deleteTemplate(module, id) {
+    const templates = this.getTemplates(module).filter(t => t.id !== id);
+    localStorage.setItem(this._key(module, 'templates'), JSON.stringify(templates));
   }
 };
 

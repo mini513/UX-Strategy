@@ -61,6 +61,26 @@
       </div>
     </div>
 
+    <!-- Template Section -->
+    <div class="card fade-in">
+      <div class="card-header">📁 템플릿</div>
+      <div class="card-body">
+        <div class="flex-between">
+          <div class="flex gap-8" style="flex:1; align-items:center;">
+            <select class="select" id="templateSelect" style="max-width:300px;">
+              <option value="">저장된 템플릿 선택...</option>
+            </select>
+            <button class="btn btn-sm btn-secondary" id="loadTemplateBtn" disabled>불러오기</button>
+            <button class="btn btn-sm btn-danger" id="deleteTemplateBtn" disabled>삭제</button>
+          </div>
+          <div class="flex gap-8">
+            <input type="text" class="input input-sm" id="templateName" placeholder="템플릿 이름" style="width:180px;">
+            <button class="btn btn-sm btn-primary" id="saveTemplateBtn">저장</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Input Section -->
     <div class="card fade-in">
       <div class="card-header"><span class="section-number">1</span> 프로젝트 및 기능 입력</div>
@@ -604,7 +624,65 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    /* ── Templates ── */
+    const $templateSelect = document.getElementById('templateSelect');
+    const $loadTemplateBtn = document.getElementById('loadTemplateBtn');
+    const $deleteTemplateBtn = document.getElementById('deleteTemplateBtn');
+    const $templateName = document.getElementById('templateName');
+    const $saveTemplateBtn = document.getElementById('saveTemplateBtn');
+
+    function refreshTemplates() {
+      const templates = UXStorage.getTemplates('kano');
+      $templateSelect.innerHTML = '<option value="">저장된 템플릿 선택...</option>';
+      templates.forEach(t => {
+        $templateSelect.innerHTML += `<option value="${t.id}">${escapeHTML(t.name)} (${UXDate.format(t.createdAt)})</option>`;
+      });
+      $loadTemplateBtn.disabled = true;
+      $deleteTemplateBtn.disabled = true;
+    }
+
+    $templateSelect.addEventListener('change', function() {
+      const hasVal = !!this.value;
+      $loadTemplateBtn.disabled = !hasVal;
+      $deleteTemplateBtn.disabled = !hasVal;
+    });
+
+    $saveTemplateBtn.addEventListener('click', function() {
+      const name = $templateName.value.trim();
+      if (!name) { alert('템플릿 이름을 입력하세요.'); return; }
+      const data = {
+        label: $projectLabel.value.trim(),
+        features: features.map(f => ({ name: f.name, functional: f.functional, dysfunctional: f.dysfunctional })),
+      };
+      UXStorage.saveTemplate('kano', name, data);
+      $templateName.value = '';
+      refreshTemplates();
+    });
+
+    $loadTemplateBtn.addEventListener('click', function() {
+      const id = $templateSelect.value;
+      const tpl = UXStorage.loadTemplate('kano', id);
+      if (tpl) {
+        $projectLabel.value = tpl.data.label || '';
+        features = (tpl.data.features || []).map(f => ({
+          name: f.name,
+          functional: f.functional,
+          dysfunctional: f.dysfunctional,
+        }));
+        renderFeatureList();
+      }
+    });
+
+    $deleteTemplateBtn.addEventListener('click', function() {
+      const id = $templateSelect.value;
+      if (id && confirm('이 템플릿을 삭제하시겠습니까?')) {
+        UXStorage.deleteTemplate('kano', id);
+        refreshTemplates();
+      }
+    });
+
     /* ── Init ── */
+    refreshTemplates();
     renderHistory();
 
   })();

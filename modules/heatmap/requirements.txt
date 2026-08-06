@@ -1,0 +1,8 @@
+flask>=3.0
+flask-cors>=4.0
+torch>=2.0
+torchvision>=0.15
+deepgaze-pytorch>=1.0
+scipy>=1.10
+numpy>=1.24
+Pillow>=10.0
