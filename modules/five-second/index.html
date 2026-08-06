@@ -168,7 +168,7 @@
         <label class="form-label">UI 스크린샷 업로드</label>
         <div class="upload-zone" id="uploadZone">
           <div class="upload-zone-icon">&#128444;</div>
-          <div class="upload-zone-text">이미지를 드래그하거나 클릭하여 업로드</div>
+          <div class="upload-zone-text">이미지를 드래그하거나, 클릭하여 선택하거나, 클립보드에서 붙여넣기(Ctrl+V)하세요</div>
         </div>
         <input type="file" id="fileInput" accept="image/*" class="hidden">
       </div>
@@ -407,6 +407,20 @@
     if (file) loadImage(file);
   });
 
+  // Clipboard paste support
+  document.addEventListener('paste', function(e) {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) loadImage(file);
+        break;
+      }
+    }
+  });
+
   function loadImage(file) {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -532,7 +546,7 @@
     testNameInput.value = '';
     keyElementsInput.value = '';
     previewArea.classList.add('hidden');
-    uploadZone.innerHTML = '<div class="upload-zone-icon">&#128444;</div><div class="upload-zone-text">이미지를 드래그하거나 클릭하여 업로드</div>';
+    uploadZone.innerHTML = '<div class="upload-zone-icon">&#128444;</div><div class="upload-zone-text">이미지를 드래그하거나, 클릭하여 선택하거나, 클립보드에서 붙여넣기(Ctrl+V)하세요</div>';
     startTestBtn.disabled = true;
     fileInput.value = '';
     if (keywordChartInstance) { keywordChartInstance.destroy(); keywordChartInstance = null; }
