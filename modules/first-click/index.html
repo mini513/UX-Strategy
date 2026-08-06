@@ -189,7 +189,11 @@
         <label class="form-label">UI 스크린샷 업로드</label>
         <div class="upload-zone" id="uploadZone">
           <div class="upload-zone-icon">&#128444;</div>
-          <div class="upload-zone-text">이미지를 드래그하거나, 클릭하여 선택하거나, 클립보드에서 붙여넣기(Ctrl+V)하세요</div>
+          <div class="upload-zone-text">이미지를 드래그하거나 클릭하여 선택</div>
+          <div style="margin-top:8px; display:inline-flex; align-items:center; gap:6px; padding:4px 12px; background:#F1F5F9; border-radius:6px; font-size:13px; color:#64748B;">
+            <kbd style="padding:2px 6px; background:#fff; border:1px solid #E2E8F0; border-radius:4px; font-size:12px; font-family:var(--mono);">Ctrl</kbd>+<kbd style="padding:2px 6px; background:#fff; border:1px solid #E2E8F0; border-radius:4px; font-size:12px; font-family:var(--mono);">V</kbd>
+            <span>클립보드 붙여넣기</span>
+          </div>
         </div>
         <input type="file" id="fileInput" accept="image/*" class="hidden">
       </div>
@@ -580,7 +584,7 @@
     testName.value = '';
     taskDesc.value = '';
     previewArea.classList.add('hidden');
-    uploadZone.innerHTML = '<div class="upload-zone-icon">&#128444;</div><div class="upload-zone-text">이미지를 드래그하거나, 클릭하여 선택하거나, 클립보드에서 붙여넣기(Ctrl+V)하세요</div>';
+    uploadZone.innerHTML = '<div class="upload-zone-icon">&#128444;</div><div class="upload-zone-text">이미지를 드래그하거나 클릭하여 선택</div><div style="margin-top:8px; display:inline-flex; align-items:center; gap:6px; padding:4px 12px; background:#F1F5F9; border-radius:6px; font-size:13px; color:#64748B;"><kbd style="padding:2px 6px; background:#fff; border:1px solid #E2E8F0; border-radius:4px; font-size:12px; font-family:var(--mono);">Ctrl</kbd>+<kbd style="padding:2px 6px; background:#fff; border:1px solid #E2E8F0; border-radius:4px; font-size:12px; font-family:var(--mono);">V</kbd> <span>클립보드 붙여넣기</span></div>';
     correctZoneRect.classList.add('hidden');
     drawingHint.classList.remove('hidden');
     resetZoneBtn.disabled = true;
