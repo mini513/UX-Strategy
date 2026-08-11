@@ -1586,7 +1586,13 @@
     // --- Metrics ---
     function showMetrics(m) {
       if (!m) return;
-      document.getElementById('resultsToggle').classList.add('visible');
+      const toggle = document.getElementById('resultsToggle');
+      const body = document.getElementById('resultsBody');
+      toggle.classList.add('visible');
+      if (!toggle.classList.contains('was-shown')) {
+        toggle.classList.add('was-shown', 'collapsed');
+        body.classList.add('collapsed');
+      }
       document.getElementById('metricsBar').classList.add('visible');
       document.getElementById('metricPeak').textContent = m.peak_attention || '—';
       document.getElementById('metricAvg').textContent = m.avg_attention || '—';
