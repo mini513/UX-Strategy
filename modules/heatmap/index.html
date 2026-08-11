@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>UX Heatmap — AI 시선 예측 분석</title>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -22,14 +25,6 @@
       --warning: #fbbf24;
       --radius: 12px;
     }
-
-    .toolkit-back {
-      position: fixed; top: 12px; left: 12px; z-index: 9999;
-      background: rgba(255,255,255,0.1); color: #e4e4ed; text-decoration: none;
-      padding: 6px 14px; border-radius: 8px; font-size: 13px; backdrop-filter: blur(8px);
-      border: 1px solid rgba(255,255,255,0.1); transition: all 0.15s;
-    }
-    .toolkit-back:hover { background: rgba(255,255,255,0.2); }
 
     body {
       font-family: 'Segoe UI', -apple-system, sans-serif;
@@ -144,24 +139,29 @@
     .upload-zone {
       border: 2px dashed var(--border);
       border-radius: var(--radius);
-      padding: 32px 16px;
+      padding: 12px 12px;
       text-align: center;
       cursor: pointer;
       transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
     .upload-zone:hover, .upload-zone.drag-over {
       border-color: var(--accent);
       background: var(--accent-glow);
     }
     .upload-zone svg {
-      width: 40px; height: 40px;
+      width: 24px; height: 24px;
       stroke: var(--text-dim);
-      margin-bottom: 12px;
+      flex-shrink: 0;
     }
     .upload-zone.drag-over svg { stroke: var(--accent); }
     .upload-zone p {
-      font-size: 14px; color: var(--text-dim);
-      line-height: 1.6;
+      font-size: 12px; color: var(--text-dim);
+      line-height: 1.4;
+      text-align: left;
+      margin: 0;
     }
     .upload-zone p strong { color: var(--accent); }
     .upload-zone input { display: none; }
@@ -412,7 +412,6 @@
       display: none;
       padding: 12px 24px;
       background: var(--surface);
-      border-top: 1px solid var(--border);
       gap: 32px;
     }
     .metrics-bar.visible { display: flex; }
@@ -602,11 +601,47 @@
     }
 
     /* Insights */
+    .results-toggle {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 24px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+    }
+    .results-toggle.visible { display: flex; }
+    .results-toggle:hover { background: var(--surface-hover, #2a2a2a); }
+    .results-toggle-chevron {
+      width: 16px; height: 16px;
+      transition: transform 0.2s;
+      color: var(--text-dim);
+    }
+    .results-toggle.collapsed .results-toggle-chevron { transform: rotate(-90deg); }
+    .results-toggle-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-dim);
+    }
+    .results-toggle-summary {
+      font-size: 11px;
+      color: var(--text-dim);
+      opacity: 0.6;
+      margin-left: auto;
+    }
+    .results-body {
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+      max-height: 600px;
+    }
+    .results-body.collapsed {
+      max-height: 0;
+    }
     .insights-bar {
       display: none;
       padding: 12px 24px;
       background: var(--surface);
-      border-top: 1px solid var(--border);
       gap: 12px;
       flex-wrap: wrap;
     }
@@ -671,17 +706,163 @@
       color: #a1a1aa;
     }
     .insight-icon.model { background: #8b5cf6; }
+
+    /* Right insights panel */
+    .insights-panel {
+      width: 0;
+      min-width: 0;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: width 0.3s ease, min-width 0.3s ease;
+    }
+    .insights-panel.open {
+      width: 360px;
+      min-width: 360px;
+    }
+    .insights-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .insights-panel-header h3 {
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .insights-panel-header h3 svg { stroke: var(--accent); }
+    .insights-panel-close {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      font-size: 18px;
+      line-height: 1;
+    }
+    .insights-panel-close:hover { color: var(--text); background: var(--surface-hover); }
+    .insights-panel-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+    .insights-panel-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-dim);
+      font-size: 13px;
+      line-height: 1.8;
+    }
+    .insights-panel-empty svg {
+      width: 48px;
+      height: 48px;
+      stroke: var(--border);
+      margin-bottom: 12px;
+    }
+    .ip-card {
+      padding: 14px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      margin-bottom: 10px;
+      transition: border-color 0.15s;
+    }
+    .ip-card:hover { border-color: var(--text-dim); }
+    .ip-card-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .ip-card-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .ip-card-dot.peak { background: var(--danger); }
+    .ip-card-dot.pattern { background: var(--accent); }
+    .ip-card-dot.distribution { background: var(--warning); }
+    .ip-card-dot.coverage { background: var(--success); }
+    .ip-card-dot.bias { background: #f97316; }
+    .ip-card-dot.model { background: #8b5cf6; }
+    .ip-card-title {
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .ip-card-desc {
+      font-size: 12px;
+      color: var(--text-dim);
+      line-height: 1.6;
+      margin-bottom: 6px;
+    }
+    .ip-card-detail {
+      font-size: 11px;
+      color: var(--text-dim);
+      opacity: 0.8;
+      line-height: 1.5;
+      padding: 8px 10px;
+      background: var(--bg);
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+    .ip-card-principle {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      font-size: 11px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+    .ip-card-principle-tag {
+      background: rgba(99, 102, 241, 0.15);
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 100px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .ip-card-principle-ref {
+      color: var(--text-dim);
+      font-style: italic;
+      font-size: 10px;
+      line-height: 1.4;
+    }
+    .insights-count-badge {
+      background: var(--accent);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 4px;
+    }
+    .tool-btn .insights-count-badge {
+      margin-left: 2px;
+    }
   </style>
 </head>
 <body>
-  <a href="../../index.html" class="toolkit-back">&larr; UX Toolkit</a>
 
   <!-- Header -->
   <div class="header">
     <div class="header-left">
       <div class="logo">H</div>
       <h1>UX <span>Heatmap</span></h1>
-      <span class="badge">DeepGaze IIE</span>
+      <span class="badge">TranSalNet</span>
     </div>
     <div class="header-right">
       <div class="status-dot" id="statusDot"></div>
@@ -700,7 +881,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
             <path d="M12 16V4m0 0l-4 4m4-4l4 4M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4"/>
           </svg>
-          <p>화면 이미지를 드래그하거나<br/><strong>클릭하여 선택</strong><br/><span style="font-size:12px;color:var(--text-dim)">Ctrl+V 붙여넣기도 가능</span></p>
+          <p>드래그, <strong>클릭</strong> 또는 <strong>Ctrl+V</strong></p>
           <input type="file" id="fileInput" accept="image/*" multiple />
         </div>
       </div>
@@ -763,13 +944,22 @@
             </svg>
             분석 시작
           </button>
-          <button class="btn btn-secondary" id="reanalyzeBtn" style="margin-top:8px;display:none;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M1 4v6h6M23 20v-6h-6"/>
-              <path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/>
-            </svg>
-            전체 재분석
-          </button>
+          <div class="btn-group" id="postAnalysisBtns" style="margin-top:8px;display:none;">
+            <button class="btn btn-secondary" id="reanalyzeBtn" style="padding:8px 10px;font-size:12px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 4v6h6M23 20v-6h-6"/>
+                <path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/>
+              </svg>
+              재분석
+            </button>
+            <button class="btn btn-primary" id="saveHeatmapBtn" style="padding:8px 10px;font-size:12px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+              </svg>
+              저장
+            </button>
+          </div>
           <div class="btn-group" style="margin-top:8px;">
             <button class="btn btn-secondary" id="downloadBtn" disabled>다운로드</button>
             <button class="btn btn-secondary" id="clearBtn" disabled>초기화</button>
@@ -858,6 +1048,21 @@
           </svg>
         </button>
         <button class="tool-btn" onclick="zoomReset()">Fit</button>
+        <div class="toolbar-sep"></div>
+        <button class="tool-btn" id="insightsToggleBtn" onclick="toggleInsightsPanel()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+          </svg>
+          분석 이유
+          <span class="insights-count-badge" id="insightsCountBadge" style="display:none;">0</span>
+        </button>
+        <button class="tool-btn" id="toolbarSaveBtn" onclick="saveHeatmapToServer()" style="display:none;background:#6366f1;color:#fff;border-radius:6px;padding:4px 12px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+          </svg>
+          저장
+        </button>
       </div>
 
       <!-- Canvas -->
@@ -871,7 +1076,7 @@
             </svg>
           </div>
           <h2>AI 시선 예측 분석</h2>
-          <p>UI 스크린샷을 업로드하면<br/>DeepGaze IIE 모델이 사용자 시선 분포를 예측합니다</p>
+          <p>UI 스크린샷을 업로드하면<br/>TranSalNet 모델이 사용자 시선 분포를 예측합니다</p>
         </div>
 
         <!-- Overlay view -->
@@ -896,32 +1101,66 @@
         <!-- Loading -->
         <div class="loading-overlay" id="loadingOverlay">
           <div class="spinner"></div>
-          <div class="loading-text" id="loadingText">DeepGaze IIE 모델 분석 중...</div>
+          <div class="loading-text" id="loadingText">TranSalNet 모델 분석 중...</div>
         </div>
       </div>
 
-      <!-- Metrics -->
-      <div class="metrics-bar" id="metricsBar">
-        <div class="metric">
-          <span class="metric-label">최대 주목도</span>
-          <span class="metric-value high" id="metricPeak">—</span>
-        </div>
-        <div class="metric">
-          <span class="metric-label">평균 주목도</span>
-          <span class="metric-value medium" id="metricAvg">—</span>
-        </div>
-        <div class="metric">
-          <span class="metric-label">집중 영역 비율</span>
-          <span class="metric-value" id="metricFocus">—</span>
-        </div>
-        <div class="metric">
-          <span class="metric-label">분석 시간</span>
-          <span class="metric-value" id="metricTime">—</span>
-        </div>
+      <!-- Results toggle -->
+      <div class="results-toggle" id="resultsToggle" onclick="toggleResults()">
+        <svg class="results-toggle-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+        <span class="results-toggle-label">분석 결과</span>
+        <span class="results-toggle-summary" id="resultsToggleSummary"></span>
       </div>
 
-      <!-- Insights -->
-      <div class="insights-bar" id="insightsBar"></div>
+      <!-- Collapsible results body -->
+      <div class="results-body" id="resultsBody">
+        <!-- Metrics -->
+        <div class="metrics-bar" id="metricsBar">
+          <div class="metric">
+            <span class="metric-label">최대 주목도</span>
+            <span class="metric-value high" id="metricPeak">—</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">평균 주목도</span>
+            <span class="metric-value medium" id="metricAvg">—</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">집중 영역 비율</span>
+            <span class="metric-value" id="metricFocus">—</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">분석 시간</span>
+            <span class="metric-value" id="metricTime">—</span>
+          </div>
+        </div>
+
+        <!-- Insights -->
+        <div class="insights-bar" id="insightsBar"></div>
+      </div>
+    </div>
+
+    <!-- Right insights panel -->
+    <div class="insights-panel" id="insightsPanel">
+      <div class="insights-panel-header">
+        <h3>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+          </svg>
+          분석 이유
+        </h3>
+        <button class="insights-panel-close" onclick="toggleInsightsPanel()">&times;</button>
+      </div>
+      <div class="insights-panel-body" id="insightsPanelBody">
+        <div class="insights-panel-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke="currentColor">
+            <path d="M2.036 12.322a1 1 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178a1 1 0 010 .643C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/>
+            <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          <div>이미지를 분석하면<br/>히트맵이 이렇게 나온 이유를<br/>여기에서 확인할 수 있습니다</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -953,7 +1192,7 @@
         const res = await fetch(`${API_URL}/health`);
         if (res.ok) {
           document.getElementById('statusDot').classList.add('connected');
-          document.getElementById('statusText').textContent = 'DeepGaze IIE 모델 준비됨';
+          document.getElementById('statusText').textContent = 'TranSalNet 모델 준비됨';
           return true;
         }
       } catch {}
@@ -1076,6 +1315,7 @@
     function selectFile(i) {
       state.activeIndex = i;
       renderFileList();
+      updateButtons();
       showImage();
       if (state.analysisMode) {
         renderRegions();
@@ -1097,7 +1337,9 @@
       document.getElementById('clearBtn').disabled = !has;
       document.getElementById('downloadBtn').disabled = !state.files.some(f => f.heatmapUrl);
       const hasDone = state.files.some(f => f.status === 'done');
-      document.getElementById('reanalyzeBtn').style.display = hasDone ? '' : 'none';
+      const activeDone = state.files[state.activeIndex]?.status === 'done';
+      document.getElementById('postAnalysisBtns').style.display = activeDone ? 'flex' : 'none';
+      document.getElementById('toolbarSaveBtn').style.display = activeDone ? '' : 'none';
       updateAnalysisButtons();
     }
 
@@ -1121,6 +1363,7 @@
         overlay.classList.remove('visible');
         compare.classList.remove('visible');
         document.getElementById('metricsBar').classList.remove('visible');
+        document.getElementById('resultsToggle').classList.remove('visible');
         return;
       }
 
@@ -1168,7 +1411,10 @@
       drawCanvas.classList.toggle('active', state.analysisMode && (view === 'overlay' || view === 'heatmap'));
 
       if (f.metrics) showMetrics(f.metrics);
-      else document.getElementById('metricsBar').classList.remove('visible');
+      else {
+        document.getElementById('metricsBar').classList.remove('visible');
+        document.getElementById('resultsToggle').classList.remove('visible');
+      }
     }
 
     function updateHeatmapCanvas(f) {
@@ -1213,7 +1459,9 @@
 
     // --- Analysis ---
     document.getElementById('analyzeBtn').addEventListener('click', analyzeAll);
-    document.getElementById('reanalyzeBtn').addEventListener('click', reanalyzeAll);
+    document.getElementById('reanalyzeBtn').addEventListener('click', () => {
+      if (state.activeIndex >= 0) reanalyze(state.activeIndex);
+    });
 
     async function analyzeAll() {
       const online = await checkServer();
@@ -1267,9 +1515,31 @@
       selectFile(idx);
       showLoading(true, `분석 중: ${f.name}`);
 
+      let imageFile = f.file;
+      if (!imageFile && f.dataUrl) {
+        try {
+          const blob = dataUrlToBlob(f.dataUrl);
+          imageFile = new File([blob], f.name || 'image.png', { type: blob.type });
+          f.file = imageFile;
+        } catch {
+          f.status = 'waiting';
+          renderFileList();
+          showToast('이미지 데이터를 복원할 수 없습니다.', 'error');
+          showLoading(false);
+          return;
+        }
+      }
+      if (!imageFile) {
+        f.status = 'waiting';
+        renderFileList();
+        showToast('이미지 파일이 없어 분석할 수 없습니다.', 'error');
+        showLoading(false);
+        return;
+      }
+
       const startTime = performance.now();
       const formData = new FormData();
-      formData.append('image', f.file);
+      formData.append('image', imageFile);
       formData.append('colormap', document.getElementById('colormapSelect').value);
       formData.append('blur', document.getElementById('blurSlider').value);
 
@@ -1285,6 +1555,7 @@
         f.insights = data.insights || [];
         f.regionAnalyzed = false;
         renderFileList();
+        updateButtons();
         showImage();
         showMetrics(f.metrics);
         showInsights(f.insights);
@@ -1304,23 +1575,48 @@
       updateButtons();
     }
 
+    // --- Results toggle ---
+    function toggleResults() {
+      const toggle = document.getElementById('resultsToggle');
+      const body = document.getElementById('resultsBody');
+      toggle.classList.toggle('collapsed');
+      body.classList.toggle('collapsed');
+    }
+
     // --- Metrics ---
     function showMetrics(m) {
       if (!m) return;
+      document.getElementById('resultsToggle').classList.add('visible');
       document.getElementById('metricsBar').classList.add('visible');
       document.getElementById('metricPeak').textContent = m.peak_attention || '—';
       document.getElementById('metricAvg').textContent = m.avg_attention || '—';
       document.getElementById('metricFocus').textContent = m.focus_ratio || '—';
       document.getElementById('metricTime').textContent = m.time || '—';
+      document.getElementById('resultsToggleSummary').textContent =
+        `주목도 ${m.peak_attention} · 집중 ${m.focus_ratio}`;
     }
 
     // --- Insights ---
     function showInsights(insights) {
       const bar = document.getElementById('insightsBar');
+      const panel = document.getElementById('insightsPanelBody');
+      const badge = document.getElementById('insightsCountBadge');
+      const toggleBtn = document.getElementById('insightsToggleBtn');
+
       if (!insights || !insights.length) {
         bar.classList.remove('visible');
+        panel.innerHTML = `<div class="insights-panel-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke="currentColor">
+            <path d="M2.036 12.322a1 1 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178a1 1 0 010 .643C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/>
+            <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          <div>분석 결과가 없습니다</div>
+        </div>`;
+        badge.style.display = 'none';
         return;
       }
+
+      // Legacy bar (keep working)
       bar.classList.add('visible');
       bar.innerHTML = insights.map(ins => `
         <div class="insight-card">
@@ -1333,6 +1629,39 @@
           ${ins.principle ? `<div class="insight-ref"><span class="insight-principle">${ins.principle}</span>${ins.ref ? ` — <span class="insight-source">${ins.ref}</span>` : ''}</div>` : ''}
         </div>
       `).join('');
+
+      // Right panel
+      badge.textContent = insights.length;
+      badge.style.display = 'inline-flex';
+
+      panel.innerHTML = insights.map(ins => `
+        <div class="ip-card">
+          <div class="ip-card-head">
+            <div class="ip-card-dot ${ins.type}"></div>
+            <div class="ip-card-title">${ins.title}</div>
+          </div>
+          <div class="ip-card-desc">${ins.desc}</div>
+          ${ins.detail ? `<div class="ip-card-detail">${ins.detail}</div>` : ''}
+          ${ins.principle ? `<div class="ip-card-principle">
+            <span class="ip-card-principle-tag">${ins.principle}</span>
+            ${ins.ref ? `<span class="ip-card-principle-ref">${ins.ref}</span>` : ''}
+          </div>` : ''}
+        </div>
+      `).join('');
+
+      // Auto-open panel on first analysis
+      const insightsPanel = document.getElementById('insightsPanel');
+      if (!insightsPanel.classList.contains('open')) {
+        insightsPanel.classList.add('open');
+        toggleBtn.classList.add('active');
+      }
+    }
+
+    function toggleInsightsPanel() {
+      const panel = document.getElementById('insightsPanel');
+      const btn = document.getElementById('insightsToggleBtn');
+      panel.classList.toggle('open');
+      btn.classList.toggle('active');
     }
 
     // --- History (IndexedDB) ---
@@ -1355,15 +1684,43 @@
       });
     }
 
+    function createComposite(origSrc, heatSrc, opacity) {
+      return new Promise(resolve => {
+        const orig = new Image();
+        orig.onload = () => {
+          const c = document.createElement('canvas');
+          c.width = orig.width; c.height = orig.height;
+          const ctx = c.getContext('2d');
+          ctx.drawImage(orig, 0, 0);
+          const heat = new Image();
+          heat.onload = () => {
+            ctx.globalAlpha = opacity;
+            ctx.drawImage(heat, 0, 0, c.width, c.height);
+            resolve(c.toDataURL('image/png'));
+          };
+          heat.onerror = () => resolve(origSrc);
+          heat.src = heatSrc;
+        };
+        orig.onerror = () => resolve(heatSrc);
+        orig.src = origSrc;
+      });
+    }
+
     async function saveToHistory(f) {
       try {
+        const opacity = document.getElementById('opacitySlider').value / 100;
+        const compositeUrl = (f.dataUrl && f.heatmapUrl)
+          ? await createComposite(f.dataUrl, f.heatmapUrl, opacity)
+          : f.heatmapUrl || f.dataUrl;
+
         const db = await openDB();
         const tx = db.transaction(STORE_NAME, 'readwrite');
         tx.objectStore(STORE_NAME).add({
           name: f.name,
           date: new Date().toISOString(),
-          originalUrl: f.originalUrl,
+          dataUrl: f.dataUrl,
           heatmapUrl: f.heatmapUrl,
+          compositeUrl: compositeUrl,
           metrics: f.metrics,
           insights: f.insights || [],
         });
@@ -1406,11 +1763,28 @@
       renderHistory();
     }
 
+    function dataUrlToBlob(dataUrl) {
+      const [header, b64] = dataUrl.split(',');
+      const mime = header.match(/:(.*?);/)[1];
+      const bin = atob(b64);
+      const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      return new Blob([arr], { type: mime });
+    }
+
     function restoreFromHistory(item) {
+      const dataUrl = item.dataUrl || item.originalUrl;
+      let file = null;
+      if (dataUrl) {
+        try {
+          const blob = dataUrlToBlob(dataUrl);
+          file = new File([blob], item.name, { type: blob.type });
+        } catch {}
+      }
       const f = {
         name: item.name,
-        file: null,
-        originalUrl: item.originalUrl,
+        file: file,
+        dataUrl: dataUrl,
         heatmapUrl: item.heatmapUrl,
         status: 'done',
         metrics: item.metrics,
@@ -1418,7 +1792,7 @@
         regionAnalyzed: false,
       };
       state.files.push(f);
-      state.selectedIndex = state.files.length - 1;
+      state.activeIndex = state.files.length - 1;
       renderFileList();
       showImage();
       showMetrics(f.metrics);
@@ -1443,7 +1817,7 @@
         const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
         return `
           <div class="history-item" style="display:flex;gap:8px;padding:8px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:6px;cursor:pointer;background:#fff;transition:background .15s" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='#fff'">
-            <img src="${item.heatmapUrl || item.originalUrl}" style="width:48px;height:48px;object-fit:cover;border-radius:4px;flex-shrink:0" />
+            <img src="${item.compositeUrl || item.heatmapUrl || item.dataUrl || item.originalUrl}" style="width:48px;height:48px;object-fit:cover;border-radius:4px;flex-shrink:0" />
             <div style="flex:1;min-width:0;overflow:hidden">
               <div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.name}</div>
               <div style="font-size:10px;color:#9ca3af">${dateStr}</div>
@@ -1508,6 +1882,51 @@
       };
       img.src = f.heatmapUrl;
     });
+
+    // --- Save heatmap to server ---
+    function saveHeatmapToServer() {
+      const f = state.files[state.activeIndex];
+      if (!f || !f.heatmapUrl) return;
+
+      const opacity = document.getElementById('opacitySlider').value / 100;
+      const canvas = document.createElement('canvas');
+      const heatImg = new Image();
+      heatImg.onload = () => {
+        canvas.width = heatImg.width;
+        canvas.height = heatImg.height;
+        const ctx = canvas.getContext('2d');
+
+        const origImg = new Image();
+        origImg.onload = async () => {
+          ctx.drawImage(origImg, 0, 0, canvas.width, canvas.height);
+          ctx.globalAlpha = opacity;
+          ctx.drawImage(heatImg, 0, 0, canvas.width, canvas.height);
+
+          const dataUrl = canvas.toDataURL('image/png');
+          try {
+            const res = await fetch(`${API_URL}/save`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                image: dataUrl,
+                filename: f.name,
+                size: `${canvas.width}x${canvas.height}`,
+                opacity: opacity,
+                metrics: f.metrics,
+                insights: (f.insights || []).map(i => ({ type: i.type, title: i.title, principle: i.principle || '' })),
+              }),
+            });
+            const result = await res.json();
+            showToast(`저장 완료: ${result.path}`, 'success');
+          } catch (err) {
+            showToast('저장 실패: ' + err.message, 'error');
+          }
+        };
+        origImg.src = f.dataUrl;
+      };
+      heatImg.src = f.heatmapUrl;
+    }
+    document.getElementById('saveHeatmapBtn').addEventListener('click', saveHeatmapToServer);
 
     // --- Clear ---
     document.getElementById('clearBtn').addEventListener('click', () => {
