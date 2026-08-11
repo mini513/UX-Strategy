@@ -1904,20 +1904,27 @@
 
           const dataUrl = canvas.toDataURL('image/png');
           try {
+            const payload = {
+              image: dataUrl,
+              filename: f.name,
+              size: `${canvas.width}x${canvas.height}`,
+              opacity: opacity,
+              metrics: f.metrics || {},
+              insights: (f.insights || []).map(i => ({ type: i.type, title: i.title, principle: i.principle || '' })),
+            };
             const res = await fetch(`${API_URL}/save`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                image: dataUrl,
-                filename: f.name,
-                size: `${canvas.width}x${canvas.height}`,
-                opacity: opacity,
-                metrics: f.metrics,
-                insights: (f.insights || []).map(i => ({ type: i.type, title: i.title, principle: i.principle || '' })),
-              }),
+              body: JSON.stringify(payload),
             });
-            const result = await res.json();
-            showToast(`저장 완료: ${result.path}`, 'success');
+            const text = await res.text();
+            let result;
+            try { result = JSON.parse(text); } catch { result = { error: text.substring(0, 100) }; }
+            if (res.ok && result.status === 'saved') {
+              showToast(`저장 완료: ${result.path}`, 'success');
+            } else {
+              showToast('저장 실패: ' + (result.error || `서버 응답 ${res.status}`), 'error');
+            }
           } catch (err) {
             showToast('저장 실패: ' + err.message, 'error');
           }
