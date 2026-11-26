@@ -211,6 +211,19 @@
     .chip[aria-pressed="true"] { background: var(--primary-light); border-color: var(--primary); color: var(--primary); font-weight: 600; }
     .part-no { font-family: var(--mono); font-size: 13px; color: var(--primary); margin-right: 8px; }
     .section-title { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
+
+    /* ── 접히는 가이드 (기본 닫힘) ── */
+    .collapsible-toggle { cursor: pointer; gap: 8px; user-select: none; }
+    .collapsible-toggle:not(.open) { border-bottom: 0; }
+    .collapsible-toggle:hover { background: var(--bg); }
+    .collapsible-toggle:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+    .collapsible-toggle .arrow { display: inline-block; font-size: 12px; color: var(--text-secondary); transition: transform 0.2s; }
+    .collapsible-toggle.open .arrow { transform: rotate(90deg); }
+    .collapsible-toggle .guide-hint { margin-left: auto; font-size: 12px; font-weight: 400; color: var(--text-muted); }
+    .collapsible-toggle.open .guide-hint { display: none; }
+    .collapsible-content { display: none; }
+    .collapsible-content.open { display: block; }
+    @media (prefers-reduced-motion: reduce) { .collapsible-toggle .arrow { transition: none; } }
     .draft-status { font-size: 12px; font-weight: 400; color: var(--text-muted); }
     .draft-status.warn { color: var(--danger); }
     .confirm-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 12px 20px; background: var(--danger-light); border-bottom: 1px solid var(--border); font-size: 14px; }
@@ -279,11 +292,12 @@
   <main class="container">
     <!-- Guide -->
     <div class="card fade-in">
-      <div class="card-header collapsible-toggle open" onclick="toggleSection(this)">
-        <span style="transition:transform 0.2s; display:inline-block;" class="arrow">▶</span>
+      <div class="card-header collapsible-toggle" id="guideToggle" role="button" tabindex="0" aria-expanded="false" aria-controls="guideContent" onclick="toggleSection(this)" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleSection(this); }">
+        <span class="arrow" aria-hidden="true">▶</span>
         휴리스틱 평가 가이드
+        <span class="guide-hint">펼쳐서 보기</span>
       </div>
-      <div class="collapsible-content open">
+      <div class="collapsible-content" id="guideContent">
         <div class="card-body">
           <div class="guide-box">
             <strong>휴리스틱 평가란?</strong>
@@ -629,11 +643,10 @@
 
     // ── Toggle ──
     function toggleSection(el) {
-      el.classList.toggle('open');
-      const arrow = el.querySelector('.arrow');
-      if (arrow) arrow.style.transform = el.classList.contains('open') ? 'rotate(90deg)' : '';
+      const open = el.classList.toggle('open');
+      el.setAttribute('aria-expanded', String(open));
       const content = el.nextElementSibling;
-      if (content) content.classList.toggle('open');
+      if (content) content.classList.toggle('open', open);
     }
 
     function toggleHeuristic(idx) {
