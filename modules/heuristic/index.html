@@ -149,6 +149,42 @@
       background: var(--danger-light) !important;
       color: var(--danger) !important;
     }
+    .target-row { display: flex; gap: 8px; }
+    .target-row .input { flex: 1; }
+    .target-upload { padding: 20px; }
+    .target-images {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .target-image {
+      position: relative;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      background: var(--bg);
+    }
+    .target-image img {
+      display: block;
+      width: 100%;
+      height: 160px;
+      object-fit: contain;
+      cursor: zoom-in;
+    }
+    .target-image .btn { position: absolute; top: 6px; right: 6px; }
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 24px;
+      cursor: zoom-out;
+    }
+    .lightbox img { max-width: 100%; max-height: 100%; border-radius: var(--radius-sm); }
   </style>
 </head>
 <body>
@@ -207,6 +243,25 @@
         <div class="form-group">
           <label class="form-label">프로젝트 / 화면명</label>
           <input type="text" class="input" id="projectLabel" placeholder="예: KAP 2.3 메인 대시보드">
+        </div>
+        <div class="form-group">
+          <label class="form-label">평가 대상 링크</label>
+          <div class="target-row">
+            <input type="url" class="input" id="targetUrl" placeholder="예: http://10.4.202.75:5175/jfg/prototype.html" oninput="onTargetUrlInput()">
+            <button class="btn btn-secondary" id="openTargetBtn" disabled onclick="openTargetUrl()">새 탭에서 열기</button>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">평가 대상 화면 캡처</label>
+          <div class="upload-zone target-upload" id="targetUploadZone">
+            <div class="upload-zone-text">이미지를 드래그하거나 클릭하여 추가 (여러 장 가능)</div>
+            <div style="margin-top:8px; display:inline-flex; align-items:center; gap:6px; padding:4px 12px; background:#F1F5F9; border-radius:6px; font-size:13px; color:#64748B;">
+              <kbd style="padding:2px 6px; background:#fff; border:1px solid #E2E8F0; border-radius:4px; font-size:12px; font-family:var(--mono);">Ctrl</kbd>+<kbd style="padding:2px 6px; background:#fff; border:1px solid #E2E8F0; border-radius:4px; font-size:12px; font-family:var(--mono);">V</kbd>
+              <span>클립보드 붙여넣기</span>
+            </div>
+          </div>
+          <input type="file" id="targetFileInput" accept="image/*" multiple class="hidden">
+          <div class="target-images" id="targetImages"></div>
         </div>
       </div>
     </div>
@@ -352,6 +407,8 @@
     let radarMode = 'max';
     let tableSortKey = null;
     let tableSortAsc = true;
+    let targetImages = []; // 평가 대상 화면 캡처 (JPEG data URL)
+    const TARGET_MAX_WIDTH = 1600;
 
     // ── Toggle ──
     function toggleSection(el) {
@@ -719,7 +776,9 @@
         };
       });
 
+      // 이력은 최대 100건까지 쌓이므로 용량이 큰 화면 캡처는 빼고 링크만 남긴다
       UXStorage.saveHistory('heuristic', label, {
+        targetUrl: document.getElementById('targetUrl').value.trim(),
         issues: issues.map(x => ({ ...x })),
         heuristicScores: heuristicScores,
         severityCounts: severityCounts,
@@ -770,6 +829,8 @@
       if (!item || !item.data.issues) return;
 
       document.getElementById('projectLabel').value = item.label;
+      document.getElementById('targetUrl').value = item.data.targetUrl || '';
+      onTargetUrlInput();
       issues = item.data.issues.map(x => ({ ...x }));
       renderHeuristics();
       updateAnalysis();
@@ -787,6 +848,126 @@
       if (!confirm('모든 평가 이력을 삭제하시겠습니까?')) return;
       localStorage.removeItem(UXStorage._key('heuristic', 'history'));
       renderHistoryList();
+    }
+
+    // ── Evaluation Target ──
+    // javascript: 같은 스킴이 새 탭에서 실행되지 않도록 http(s) 주소만 허용한다
+    function normalizeTargetUrl(value) {
+      const v = value.trim();
+      if (!v) return '';
+      const withScheme = /^https?:\/\//i.test(v) ? v : `http://${v}`;
+      try {
+        const url = new URL(withScheme);
+        return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : '';
+      } catch (e) {
+        return '';
+      }
+    }
+
+    function onTargetUrlInput() {
+      const url = normalizeTargetUrl(document.getElementById('targetUrl').value);
+      document.getElementById('openTargetBtn').disabled = !url;
+    }
+
+    function openTargetUrl() {
+      const url = normalizeTargetUrl(document.getElementById('targetUrl').value);
+      if (url) window.open(url, '_blank', 'noopener');
+    }
+
+    function addTargetImageFile(file) {
+      if (!file || !file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          // 원본 캡처를 그대로 저장하면 브라우저 저장 공간(약 5MB)이 금방 차서 가로 1600px JPEG로 줄인다
+          const scale = Math.min(1, TARGET_MAX_WIDTH / img.naturalWidth);
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.naturalWidth * scale);
+          canvas.height = Math.round(img.naturalHeight * scale);
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          targetImages.push(canvas.toDataURL('image/jpeg', 0.85));
+          renderTargetImages();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function renderTargetImages() {
+      const area = document.getElementById('targetImages');
+      area.innerHTML = '';
+      targetImages.forEach((src, idx) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'target-image';
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = `평가 대상 화면 ${idx + 1}`;
+        img.onclick = () => openLightbox(src);
+        const del = document.createElement('button');
+        del.className = 'btn btn-danger btn-sm';
+        del.textContent = '삭제';
+        del.onclick = () => {
+          targetImages.splice(idx, 1);
+          renderTargetImages();
+        };
+        wrap.append(img, del);
+        area.appendChild(wrap);
+      });
+    }
+
+    function openLightbox(src) {
+      let box = document.getElementById('lightbox');
+      if (!box) {
+        box = document.createElement('div');
+        box.id = 'lightbox';
+        box.className = 'lightbox hidden';
+        box.onclick = () => box.classList.add('hidden');
+        const img = document.createElement('img');
+        img.alt = '평가 대상 화면 확대';
+        box.appendChild(img);
+        document.body.appendChild(box);
+      }
+      box.querySelector('img').src = src;
+      box.classList.remove('hidden');
+    }
+
+    function setupTargetUpload() {
+      const zone = document.getElementById('targetUploadZone');
+      const input = document.getElementById('targetFileInput');
+      zone.addEventListener('click', () => input.click());
+      zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        zone.classList.add('dragover');
+      });
+      zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+      zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('dragover');
+        [...e.dataTransfer.files].forEach(addTargetImageFile);
+      });
+      input.addEventListener('change', (e) => {
+        [...e.target.files].forEach(addTargetImageFile);
+        input.value = '';
+      });
+      // 텍스트 붙여넣기는 그대로 두고 이미지가 있을 때만 가로챈다
+      document.addEventListener('paste', (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        for (const item of items) {
+          if (item.type.startsWith('image/')) {
+            e.preventDefault();
+            addTargetImageFile(item.getAsFile());
+            break;
+          }
+        }
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') document.getElementById('lightbox')?.classList.add('hidden');
+      });
     }
 
     // ── Template ──
@@ -820,15 +1001,22 @@
       }
       nameInput.style.borderColor = '';
 
-      UXStorage.saveTemplate('heuristic', name, {
-        projectLabel: document.getElementById('projectLabel').value,
-        issues: issues.map(x => ({
-          hIdx: x.hIdx,
-          description: x.description,
-          severity: x.severity,
-          location: x.location,
-        })),
-      });
+      try {
+        UXStorage.saveTemplate('heuristic', name, {
+          projectLabel: document.getElementById('projectLabel').value,
+          targetUrl: document.getElementById('targetUrl').value.trim(),
+          targetImages: [...targetImages],
+          issues: issues.map(x => ({
+            hIdx: x.hIdx,
+            description: x.description,
+            severity: x.severity,
+            location: x.location,
+          })),
+        });
+      } catch (e) {
+        alert('브라우저 저장 공간이 부족해 템플릿을 저장하지 못했습니다.\n화면 캡처 수를 줄이거나 오래된 템플릿을 삭제한 뒤 다시 저장해 주세요.');
+        return;
+      }
 
       nameInput.value = '';
       refreshTemplateList();
@@ -843,6 +1031,10 @@
 
       const data = tpl.data;
       document.getElementById('projectLabel').value = data.projectLabel || '';
+      document.getElementById('targetUrl').value = data.targetUrl || '';
+      onTargetUrlInput();
+      targetImages = Array.isArray(data.targetImages) ? [...data.targetImages] : [];
+      renderTargetImages();
 
       if (data.issues) {
         issues = data.issues.map(x => ({
@@ -873,6 +1065,7 @@
     renderHistoryList();
     setRadarMode('max');
     refreshTemplateList();
+    setupTargetUpload();
   </script>
 </body>
 </html>
