@@ -185,6 +185,76 @@
       cursor: zoom-out;
     }
     .lightbox img { max-width: 100%; max-height: 100%; border-radius: var(--radius-sm); }
+
+    /* ── 평가자 유형 탭 ── */
+    .mode-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 20px; }
+    .mode-tabs { display: inline-flex; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; }
+    .mode-tab { border: 0; background: transparent; color: var(--text-secondary); font: inherit; font-size: 14px; font-weight: 600; padding: 8px 18px; border-radius: 999px; cursor: pointer; }
+    .mode-tab[aria-selected="true"] { background: var(--primary); color: #fff; }
+    .mode-tab:focus-visible, .chip:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    [hidden] { display: none !important; }
+
+    /* ── 공통 ── */
+    .help { font-size: 13px; color: var(--text-muted); }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { font: inherit; font-size: 13px; border: 1px solid var(--border); background: var(--surface); color: var(--text); padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+    .chip[aria-pressed="true"] { background: var(--primary-light); border-color: var(--primary); color: var(--primary); font-weight: 600; }
+    .part-no { font-family: var(--mono); font-size: 13px; color: var(--primary); margin-right: 8px; }
+    .section-title { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
+    .part-desc { font-size: 13px; font-weight: 400; color: var(--text-muted); margin-left: 8px; }
+    .vh { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+    .pts { display: flex; flex-wrap: wrap; gap: 6px; }
+    .pt { display: inline-flex; }
+    .pt span { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-xs); background: var(--surface); font-size: 13px; cursor: pointer; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .pt input:checked + span { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+    .pt input:focus-visible + span { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .scale { display: inline-flex; flex-direction: column; gap: 4px; max-width: 100%; }
+    .ends { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--text-muted); }
+    .qs > .q + .q { border-top: 1px solid var(--border); }
+    .q { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 20px; align-items: center; padding: 12px 0; }
+    .q p { margin: 0; min-width: 0; }
+    @media (max-width: 720px) { .q { grid-template-columns: 1fr; } }
+    .sub { font-size: 14px; font-weight: 600; color: var(--primary); }
+    .sub-wrap + .sub-wrap { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
+
+    /* ── SMT 점검 항목 ── */
+    .smt-checks { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+    .smt-checks-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+    .smt-check { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+    .smt-check > label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; font-size: 14px; }
+    .smt-check input[type="checkbox"] { margin-top: 3px; width: 16px; height: 16px; flex: none; accent-color: var(--primary); }
+    .smt-check-detail { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: center; padding-left: 26px; }
+    @media (max-width: 640px) { .smt-check-detail { grid-template-columns: 1fr; } }
+
+    /* ── SMT 현장 전문가 ── */
+    .jobgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    @media (max-width: 760px) { .jobgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 440px) { .jobgrid { grid-template-columns: 1fr; } }
+    .opt { display: block; min-width: 0; }
+    .oc { display: flex; flex-direction: column; gap: 2px; height: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); cursor: pointer; }
+    .oc b { font-size: 14px; font-weight: 600; }
+    .oc small { font-size: 12px; color: var(--text-muted); }
+    .opt input:checked + .oc { border-color: var(--primary); background: var(--primary-light); }
+    .opt input:checked + .oc b { color: var(--primary); }
+    .opt input:focus-visible + .oc { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .eqline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .eq { display: inline-flex; }
+    .eq span { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--radius-xs); background: var(--surface); font-family: var(--mono); font-size: 13px; cursor: pointer; }
+    .eq input:checked + span { border-color: var(--primary); background: var(--primary-light); color: var(--primary); font-weight: 600; }
+    .eq input:focus-visible + span { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .eq-arrow { color: var(--text-muted); font-size: 13px; }
+    .level-banner { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; padding: 16px 20px; margin-bottom: 20px; border-radius: var(--radius); background: var(--primary-light); border: 1px solid var(--primary); }
+    .level-banner .lv { display: flex; flex-direction: column; }
+    .level-banner .lv small { font-size: 12px; color: var(--text-secondary); }
+    .level-banner .lv b { font-size: 20px; color: var(--primary); }
+    .level-banner .meta { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 14px; }
+    .level-banner .rule { flex-basis: 100%; font-size: 12px; color: var(--text-secondary); margin: 0; }
+    .task { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); }
+    .task + .task { margin-top: 12px; }
+    .task-no { font-family: var(--mono); font-size: 12px; color: var(--primary); }
+    .task-text { font-weight: 600; margin: 0; }
+    .ex-tag { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--warning-light); color: #92400E; font-weight: 600; margin-left: 6px; }
+    .hint { font-size: 13px; color: var(--text-secondary); background: var(--bg); border: 1px dashed var(--border); border-radius: var(--radius-sm); padding: 8px 12px; margin-bottom: 12px; }
   </style>
 </head>
 <body>
@@ -211,10 +281,22 @@
               <li><strong>심각도:</strong> 1(외형적) ~ 4(치명적) 4단계로 분류</li>
               <li><strong>산출물:</strong> 휴리스틱별 이슈 목록 + 심각도 분포 + 레이더 차트</li>
             </ul>
+            <p class="mt-8"><strong>SMT 현장 전문가</strong> 탭은 현장 직무 담당자가 담당 업무를 기준으로 화면을 직접 써 보고 평가하는 보완 평가표입니다. 직무·담당 장비·숙련도에 따라 문항이 달라집니다.</p>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- 평가자 유형 -->
+    <div class="mode-bar">
+      <div class="mode-tabs" role="tablist" aria-label="평가자 유형">
+        <button class="mode-tab" role="tab" id="tab-ux" aria-controls="panel-ux" aria-selected="true">UX 전문가</button>
+        <button class="mode-tab" role="tab" id="tab-smt" aria-controls="panel-smt" aria-selected="false" tabindex="-1">SMT 현장 전문가</button>
+      </div>
+      <span class="help" id="mode-help">원칙 기준으로 이슈를 찾고 심각도를 매깁니다.</span>
+    </div>
+
+    <div id="panel-ux" role="tabpanel" aria-labelledby="tab-ux">
 
     <!-- Template Section -->
     <div class="card fade-in">
@@ -263,11 +345,29 @@
           <input type="file" id="targetFileInput" accept="image/*" multiple class="hidden">
           <div class="target-images" id="targetImages"></div>
         </div>
+        <div class="form-group" style="margin:16px 0 0;">
+          <span class="form-label" id="uxJobsLabel">이 화면을 주로 사용할 것으로 예상되는 직무</span>
+          <div class="chips" id="uxJobs" role="group" aria-labelledby="uxJobsLabel"></div>
+          <p class="help mt-8">고른 직무의 입장에서 평가합니다. 그 직무가 꼭 봐야 하는 정보가 아래 '직무 적합성' 문항으로 들어갑니다.</p>
+        </div>
       </div>
     </div>
 
     <!-- 10 Heuristics -->
+    <h2 class="section-title fade-in"><span class="part-no">A</span>휴리스틱 10원칙<span class="part-desc">원칙을 펼쳐 SMT 점검 항목을 체크하고, 그 밖의 이슈를 추가하세요</span></h2>
     <div id="heuristicsArea" class="fade-in"></div>
+
+    <!-- 직무 적합성 -->
+    <div class="card fade-in">
+      <div class="card-header"><span class="part-no">B</span>직무 적합성<span class="part-desc">예상 직무에 필요한 정보가 화면에 있는지</span></div>
+      <div class="card-body" id="uxFit"></div>
+    </div>
+
+    <!-- 현장 사용 환경 -->
+    <div class="card fade-in">
+      <div class="card-header"><span class="part-no">C</span>현장 사용 환경<span class="part-desc">공장 라인에서 쓰는 B2B 화면 기준</span></div>
+      <div class="card-body"><div class="qs" id="uxField"></div></div>
+    </div>
 
     <!-- Analysis Section -->
     <div id="analysisSection" class="hidden">
@@ -339,6 +439,34 @@
         </div>
       </div>
     </div>
+
+    </div><!-- /panel-ux -->
+
+    <div id="panel-smt" role="tabpanel" aria-labelledby="tab-smt" hidden>
+      <div class="card fade-in">
+        <div class="card-header"><span class="part-no">1단계</span>평가자 프로필<span class="part-desc">4문항 · 1분</span></div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label" for="smtTarget">평가 대상 화면</label>
+            <input type="text" class="input" id="smtTarget" placeholder="예: JOB Guarantee 1.0 Config 화면">
+          </div>
+          <div class="form-group">
+            <span class="form-label" id="smtJobLabel">직무</span>
+            <div class="jobgrid" id="smtJob" role="radiogroup" aria-labelledby="smtJobLabel"></div>
+          </div>
+          <div class="form-group">
+            <span class="form-label" id="smtEqLabel">담당 장비 (라인 순서 · 여러 개 선택)</span>
+            <div class="eqline" id="smtEq" role="group" aria-labelledby="smtEqLabel"></div>
+          </div>
+          <div class="grid grid-2" style="gap:16px;">
+            <div><span class="form-label" id="smtExpLabel">SMT 경력</span><div id="smtExp"></div></div>
+            <div><span class="form-label" id="smtFreqLabel">검사 장비 SW 사용 빈도</span><div id="smtFreq"></div></div>
+          </div>
+          <p class="help mt-12">답을 바꾸면 아래 평가표가 바로 다시 만들어집니다. 이 탭의 응답은 아직 저장되지 않습니다.</p>
+        </div>
+      </div>
+      <div id="smtSheet"></div>
+    </div>
   </main>
 
   <script src="../../shared/storage.js"></script>
@@ -401,6 +529,89 @@
     const SEVERITY_LABELS = ['', '외형적 문제', '사소한 문제', '중요한 문제', '치명적 문제'];
     const SEVERITY_EN = ['', 'Cosmetic', 'Minor', 'Major', 'Catastrophic'];
 
+    // 원칙별 SMT 화면 점검 항목. 체크하면 issues에 이슈로 들어가 차트·CSV·이력에 그대로 반영된다
+    const SMT_CHECKS = [
+      ['장비·라인 연결 상태와 검사 진행 상황이 항상 보인다', '저장·적용 같은 동작의 결과를 바로 확인할 수 있다'],
+      ['현장 용어(Pad, Package, Fiducial, Squeeze)와 단위(μm, %, PPM)를 그대로 쓴다', '화면 순서가 실제 공정 순서(Printer → SPI → Mounter → AOI)를 따른다'],
+      ['검사조건·설정 변경을 저장 전에 취소하거나 되돌릴 수 있다', '작업 중 다른 화면을 봤다가 하던 곳으로 돌아올 수 있다'],
+      ['SPI·AOI처럼 장비가 달라도 같은 기능은 같은 이름과 위치에 있다', 'NG·Pass·Good의 색과 아이콘 의미가 화면마다 같다'],
+      ['허용 범위(USL/LSL) 밖의 값은 입력 단계에서 막는다', '생산에 영향을 주는 변경 전에 영향 범위를 알려 준다'],
+      ['현재 JOB·라인·장비가 어느 화면에서나 보인다', '이전 설정값이나 기본값을 옆에 보여 준다'],
+      ['자주 쓰는 필터와 조건을 저장해 다시 쓸 수 있다', '숙련자를 위한 일괄 처리나 빠른 동작이 있다'],
+      ['직무에 필요한 핵심 지표가 먼저 보이고 나머지는 접을 수 있다', '한 화면에서 서로 경쟁하는 강조 요소가 많지 않다'],
+      ['오류 메시지가 원인(장비·검사조건·판정)과 조치 방법을 알려 준다', '알람에서 원인 화면으로 바로 이동할 수 있다'],
+      ['항목 옆에서 바로 설명을 볼 수 있다', '현장에서 따라 할 수 있는 단계별 가이드가 있다'],
+    ];
+
+    // 직무 9종: 통합 SPC 직무기준 Research(FigJam) 기준
+    const JOBS = [
+      { id: 'op', name: '생산 실무자', desc: '라인 생산 진행·불량 판정',
+        tasks: ['생산이 정상적으로 진행되는지 확인', '불량 발생 시 불량을 파악하고 판정', '이전 공정에 품질 개선 요청', '담당 시간 생산 리포트 작성'],
+        info: ['현 생산량과 목표 대비 달성률', '수율', '같은 불량의 연속 발생 여부', '실시간 알람', '불량 이미지'],
+        scen: ['지금 라인이 목표 생산량을 달성하고 있는지 확인하세요.', '같은 불량이 연속으로 발생한 보드를 찾아 상세 화면을 여세요.', '오늘 내가 Pass로 판정한 보드를 모아 다시 확인하세요.'],
+        ex: '알람이 동시에 2개 이상 떴을 때 먼저 조치할 알람을 고르고 이유를 말해 주세요.' },
+      { id: 'pm', name: '생산 관리자', desc: '라인별 생산·품질 목표 관리',
+        tasks: ['라인별 생산목표 달성 여부 확인', '라인별 목표 품질 유지 여부 확인', '유출 불량 발생 여부 확인', '생산성 향상 여부 판단', '공장장 보고용 리포트 작성'],
+        info: ['수율과 직행률(FPY)', 'UPH', '설비 가동률', 'LOT별 생산시간(CT)', 'Worst Defect Top 5'],
+        scen: ['수율이 떨어진 장비를 찾아 해당 장비의 생산 분석 화면으로 이동하세요.', '생산 속도가 떨어진 라인에서 지연이 생긴 장비를 찾으세요.', '이번 주 라인별 생산 리포트를 만들어 내보내세요.'],
+        ex: '수율은 정상인데 UPH가 떨어진 라인을 찾아 지연 원인이 된 장비를 짚어 주세요.' },
+      { id: 'pre', name: '이전 공정 담당자', desc: 'Printer·Mounter·디스펜서 담당',
+        tasks: ['담당 공정이 생산·품질 목표를 계속 유지하는지 확인', '담당 공정의 생산성 향상 여부 판단', 'OEE로 담당 장비 효율 파악'],
+        info: ['Offset·Volume Trend', 'OEE', 'SPI에서 AOI까지 보드 통과 시간', 'KPO 진단 결과', 'Rework 보드 목록'],
+        scen: ['Printer 파라미터(Squeeze 압력·속도)를 바꾼 뒤 생산된 보드에 문제가 없는지 확인하세요.', 'NG 보드를 모아 문제가 생긴 위치를 찾으세요.', 'Rework한 보드를 모아 Printer 개선점을 찾으세요.'],
+        ex: 'SPI 결과는 정상인데 AOI에서 같은 위치 불량이 반복될 때, 원인이 된 공정을 추적해 주세요.' },
+      { id: 'qe', name: '품질 담당자', desc: '품질 기준 설정·유출 불량 재발 방지',
+        tasks: ['품질 기준을 정해 공정에 반영', '유출 불량 재발 방지', 'LOT별·기간별 품질 리포트 작성'],
+        info: ['Cp/Cpk', 'Control Chart', 'USL/LSL 설정값', '불량률(PPM)', '유출 불량 리스트'],
+        scen: ['특정 부품의 USL/LSL을 설정하고 Cp/Cpk 추세를 확인하세요.', '유출 불량 보드를 찾아 원인이 장비·검사조건·판정 중 무엇인지 기록하세요.', '특정 LOT의 품질 리포트를 내보내세요.'],
+        ex: 'Pass로 판정됐지만 유출된 보드를 찾아, 판정자별로 판정이 적절했는지 확인해 주세요.' },
+      { id: 'qm', name: '품질 관리자', desc: '라인별 품질 차이·품질 비용 관리',
+        tasks: ['생산품 품질 유지와 품질 비용 절감', '라인별 품질 차이 파악', '공장장 보고용 품질 리포트 작성'],
+        info: ['라인별 불량률(PPM)', '유출 불량 현황', '품질 추세', '리포트 Export'],
+        scen: ['라인별 품질 차이를 비교해 품질이 가장 낮은 라인을 찾으세요.', '이번 달 유출 불량 현황을 확인하세요.', '공장장 보고용 품질 리포트를 만드세요.'],
+        ex: '같은 모델을 생산하는 두 라인 중 PPM이 높은 라인의 원인을 찾아 주세요.' },
+      { id: 'job', name: 'JOB 작성 및 관리', desc: '검사 JOB 작성·디버깅·최적화',
+        tasks: ['정해진 품질 기준으로 JOB 작성·디버깅', 'JOB 작성부터 목표 수준 달성까지 시간 관리', '라인 간 JOB 비교', 'JOB 변경에 따른 생산성 변화 파악'],
+        info: ['가성불량률(False Call)', 'JOB별 불량률', '검사 시간(CT)', '검사조건(모드·Tolerance)', '라인 간 JOB 차이'],
+        scen: ['같은 모델을 생산하는 두 라인의 JOB을 비교해 차이를 찾으세요.', '가성불량이 많은 항목을 찾아 검사조건을 확인하세요.', 'JOB 변경 전후의 CT 변화를 확인하세요.'],
+        ex: 'JOB 변경 후 가성불량은 줄었지만 CT가 늘었습니다. 어떤 검사 항목 때문인지 찾아 주세요.' },
+      { id: 'fm', name: '총괄 관리자(공장장)', desc: '공장 생산·품질·비용 목표 관리',
+        tasks: ['공장 전체 생산 목표 달성 관리', '공장 품질 목표 달성 관리', '생산성과 비용 관리', '다른 라인·공장과 성과 비교'],
+        info: ['공장 전체 수율·직행률', '라인별 성과 비교', '비용 지표', 'KY SW 기여도(KPO·Smart Review)'],
+        scen: ['공장 전체 생산·품질 목표 달성 여부를 한 화면에서 확인하세요.', '다른 라인보다 성과가 낮은 라인을 찾으세요.', 'KPO·Smart Review 같은 KY SW의 기여도를 확인하세요.'],
+        ex: '목표에 못 미친 라인의 원인이 장비·품질·인력 중 무엇인지 리포트 한 장으로 판단해 주세요.' },
+      { id: 'mt', name: '기술지원(Maintenance)', desc: '장비 상태·다운타임 관리',
+        tasks: ['장비 상태 모니터링과 다운 예방', '장비 다운타임 분석', '옵션·라이선스 적용 환경 확인', '유지보수 계획 대비 시행 이력 관리'],
+        info: ['장비 상태·연결 정보', 'Down Time', '에러 이력', 'SW 버전'],
+        scen: ['장비 에러 이력을 열고 다운타임이 가장 긴 장비를 찾으세요.', '불량이 장비 때문인지 판단하고 조치 가이드를 여세요.', '유지보수 계획 대비 시행 이력을 확인하세요.'],
+        ex: '검사기 상태는 정상인데 보드 흐름이 늦어진 구간을 타임라인에서 찾아 주세요.' },
+      { id: 'ts', name: '기술지원(대리점/TS)', desc: '버전·라이선스 확인과 문제 분석',
+        tasks: ['장비 SW 버전과 적용일 확인', '옵션·라이선스 적용 환경 확인', '문제 발생 시 데이터 분석', '분석 데이터 Export'],
+        info: ['SW 버전·적용일', '옵션·라이선스 상태', 'Repeatability·Accuracy', '데이터 Export'],
+        scen: ['장비 SW 버전과 옵션·라이선스 적용 현황을 확인하세요.', '고객이 문의한 보드의 검사 결과를 찾아 일시적 문제인지 연속 문제인지 판단하세요.', '분석한 데이터를 내보내세요.'],
+        ex: '"데이터가 저장되지 않는다"는 고객 문의에 대해 DB 저장 문제인지 SPC 설정 문제인지 구분해 주세요.' },
+    ];
+
+    const EQUIP = [
+      { id: 'printer', name: 'Printer', info: ['Squeeze 압력·속도', '보드 분리 속도'] },
+      { id: 'spi', name: 'SPI', info: ['Pad별 Volume·Height·Offset'] },
+      { id: 'mounter', name: 'Mounter', info: ['평균 CT', 'KPO Mounter 현황'] },
+      { id: 'preaoi', name: 'Pre-AOI', info: ['장비 상태·수율'] },
+      { id: 'reflow', name: 'Reflow', info: ['평균 CT'] },
+      { id: 'postaoi', name: 'Post-AOI', info: ['Component·Package별 불량', '2D/3D 불량 이미지'] },
+      { id: 'review', name: 'Review Station', info: ['최종 판정 결과', 'AI 판정 비율'] },
+    ];
+
+    const FIELD_CHECKS = [
+      '장비 앞 1~2m 거리에서도 핵심 수치와 상태를 읽을 수 있다',
+      'NG·OK를 색만이 아니라 아이콘이나 글자로도 구분한다',
+      '소음이 큰 현장에서도 알람을 눈으로 알아챌 수 있다',
+      '교대 근무 때 이전 작업 내용을 넘겨받을 수 있다',
+      '터치와 마우스 모두 누르기 쉬운 크기다',
+    ];
+    const EXP_OPTS = [{ v: 'lt1', t: '1년 미만' }, { v: '1to3', t: '1~3년' }, { v: '3to5', t: '3~5년' }, { v: 'gt5', t: '5년 이상' }];
+    const FREQ_OPTS = [{ v: 'none', t: '처음 사용' }, { v: 'month', t: '월 1~2회' }, { v: 'week', t: '주 1회 이상' }, { v: 'daily', t: '매일' }];
+
     // ── State ──
     let issues = []; // {hIdx, description, severity, location, id}
     let radarChart = null;
@@ -409,6 +620,8 @@
     let tableSortAsc = true;
     let targetImages = []; // 평가 대상 화면 캡처 (JPEG data URL)
     const TARGET_MAX_WIDTH = 1600;
+    let uxJobs = new Set(); // 이 화면을 주로 사용할 것으로 예상되는 직무
+    const smtProfile = { job: 'op', equip: new Set(), exp: '1to3', freq: 'week' };
 
     // ── Toggle ──
     function toggleSection(el) {
@@ -442,6 +655,8 @@
           </div>
           <div class="heuristic-body" id="hBody${i}">
             <div class="heuristic-desc">${h.desc}</div>
+            ${renderSmtChecks(i)}
+            <div class="smt-checks-title" style="margin-bottom:8px;">그 밖의 이슈</div>
             <div id="issueForm${i}">
               <div class="issue-form">
                 <div class="form-group" style="margin-bottom:10px;">
@@ -470,7 +685,8 @@
             </div>
             <div id="issueList${i}">`;
 
-        hIssues.forEach(issue => {
+        // 점검 항목에서 나온 이슈는 위 체크박스에 이미 보이므로 자유 이슈 목록에는 넣지 않는다
+        hIssues.filter(issue => !issue.checkKey).forEach(issue => {
           html += renderIssueItem(issue);
         });
 
@@ -779,6 +995,7 @@
       // 이력은 최대 100건까지 쌓이므로 용량이 큰 화면 캡처는 빼고 링크만 남긴다
       UXStorage.saveHistory('heuristic', label, {
         targetUrl: document.getElementById('targetUrl').value.trim(),
+        expectedJobs: [...uxJobs],
         issues: issues.map(x => ({ ...x })),
         heuristicScores: heuristicScores,
         severityCounts: severityCounts,
@@ -831,6 +1048,7 @@
       document.getElementById('projectLabel').value = item.label;
       document.getElementById('targetUrl').value = item.data.targetUrl || '';
       onTargetUrlInput();
+      applyExpectedJobs(item.data.expectedJobs);
       issues = item.data.issues.map(x => ({ ...x }));
       renderHeuristics();
       updateAnalysis();
@@ -848,6 +1066,264 @@
       if (!confirm('모든 평가 이력을 삭제하시겠습니까?')) return;
       localStorage.removeItem(UXStorage._key('heuristic', 'history'));
       renderHistoryList();
+    }
+
+    // ── SMT 점검 항목 (체크 = 이슈) ──
+    function checkKey(hIdx, k) { return `h${hIdx}-c${k}`; }
+
+    function renderSmtChecks(hIdx) {
+      const rows = SMT_CHECKS[hIdx].map((text, k) => {
+        const key = checkKey(hIdx, k);
+        const issue = issues.find(x => x.checkKey === key);
+        const sev = issue ? issue.severity : 3;
+        const sevRadios = [1, 2, 3, 4].map(s =>
+          `<label class="s${s}"><input type="radio" name="chkSev-${key}" value="${s}"${s === sev ? ' checked' : ''} onchange="onCheckSeverity('${key}', ${s})"><span>${s} ${['', '외형적', '사소한', '중요한', '치명적'][s]}</span></label>`
+        ).join('');
+        return `<div class="smt-check">
+          <label><input type="checkbox" id="chk-${key}"${issue ? ' checked' : ''} onchange="onCheckToggle(${hIdx}, ${k}, this.checked)"><span>${escapeHtml(text)}</span></label>
+          <div class="smt-check-detail" id="chkDetail-${key}"${issue ? '' : ' hidden'}>
+            <div class="severity-radio" role="radiogroup" aria-label="심각도">${sevRadios}</div>
+            <input type="text" class="input input-sm" id="chkLoc-${key}" value="${issue ? escapeHtml(issue.location || '') : ''}" placeholder="문제가 있는 화면 / 위치" oninput="onCheckLocation('${key}', this.value)">
+          </div>
+        </div>`;
+      }).join('');
+      return `<div class="smt-checks"><div class="smt-checks-title">SMT 점검 항목 · 문제가 있으면 체크</div>${rows}</div>`;
+    }
+
+    function onCheckToggle(hIdx, k, checked) {
+      const key = checkKey(hIdx, k);
+      const detail = document.getElementById(`chkDetail-${key}`);
+      if (checked) {
+        if (!issues.some(x => x.checkKey === key)) {
+          const sevEl = document.querySelector(`input[name="chkSev-${key}"]:checked`);
+          issues.push({
+            id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+            hIdx,
+            description: `점검 항목 미충족: ${SMT_CHECKS[hIdx][k]}`,
+            severity: parseInt(sevEl ? sevEl.value : '3', 10),
+            location: document.getElementById(`chkLoc-${key}`).value.trim(),
+            checkKey: key,
+          });
+        }
+      } else {
+        issues = issues.filter(x => x.checkKey !== key);
+      }
+      if (detail) detail.hidden = !checked;
+      refreshHeuristicCount(hIdx);
+      updateAnalysis();
+    }
+
+    function onCheckSeverity(key, s) {
+      const issue = issues.find(x => x.checkKey === key);
+      if (!issue) return;
+      issue.severity = s;
+      updateAnalysis();
+    }
+
+    function onCheckLocation(key, value) {
+      const issue = issues.find(x => x.checkKey === key);
+      if (!issue) return;
+      issue.location = value.trim();
+      updateAnalysis();
+    }
+
+    // 펼쳐 둔 원칙이 닫히지 않도록 전체를 다시 그리지 않고 개수 배지만 갱신한다
+    function refreshHeuristicCount(hIdx) {
+      const card = document.getElementById(`hBody${hIdx}`)?.closest('.heuristic-card');
+      if (!card) return;
+      const count = issues.filter(x => x.hIdx === hIdx).length;
+      card.classList.toggle('has-issues', count > 0);
+      card.querySelector('.h-count').textContent = count ? count + '건' : '';
+      const list = document.getElementById(`issueList${hIdx}`);
+      if (list) list.innerHTML = issues.filter(x => x.hIdx === hIdx && !x.checkKey).map(renderIssueItem).join('');
+    }
+
+    // ── 예상 직무 · 직무 적합성 · 현장 환경 (UX 전문가) ──
+    function scaleRadios(name, labelId, options) {
+      return `<div class="scale" role="radiogroup" aria-labelledby="${labelId}"><div class="pts">${options.map((t, i) =>
+        `<label class="pt"><input class="vh" type="radio" name="${name}" id="${name}-${i}" value="${i + 1}"><span>${t}</span></label>`
+      ).join('')}</div></div>`;
+    }
+
+    function renderUxJobs() {
+      document.getElementById('uxJobs').innerHTML = JOBS.map(j =>
+        `<button type="button" class="chip" data-job="${j.id}" aria-pressed="${uxJobs.has(j.id)}">${j.name}</button>`
+      ).join('');
+    }
+
+    function renderUxFit() {
+      const area = document.getElementById('uxFit');
+      const jobs = JOBS.filter(j => uxJobs.has(j.id));
+      if (!jobs.length) {
+        area.innerHTML = '<p class="help" style="margin:0;">평가 정보에서 이 화면을 주로 사용할 것으로 예상되는 직무를 골라 주세요.</p>';
+        return;
+      }
+      area.innerHTML = jobs.map(j => `<div class="sub-wrap"><div class="sub">${j.name}</div><div class="qs">${
+        j.info.map((item, k) => {
+          const id = `fit-${j.id}-${k}`;
+          return `<div class="q"><p id="${id}-l">${escapeHtml(item)}</p>${scaleRadios(id, id + '-l', ['화면에 있음', '찾기 어려움', '없음'])}</div>`;
+        }).join('')
+      }</div></div>`).join('');
+    }
+
+    function renderUxField() {
+      document.getElementById('uxField').innerHTML = FIELD_CHECKS.map((t, i) =>
+        `<div class="q"><p id="field-${i}-l">${escapeHtml(t)}</p>${scaleRadios(`field-${i}`, `field-${i}-l`, ['충족', '일부 충족', '미충족'])}</div>`
+      ).join('');
+    }
+
+    // ── SMT 현장 전문가 ──
+    function smtLevel(p) {
+      if (p.exp === 'lt1' || p.freq === 'none') return { key: 'basic', name: '입문', tasks: 2, min: 10 };
+      if (p.exp === 'gt5' && (p.freq === 'week' || p.freq === 'daily')) return { key: 'expert', name: '전문', tasks: 3, min: 20, ex: true };
+      return { key: 'mid', name: '숙련', tasks: 3, min: 15 };
+    }
+
+    function renderSmtProfile() {
+      document.getElementById('smtJob').innerHTML = JOBS.map(j =>
+        `<label class="opt"><input class="vh" type="radio" name="smtJob" value="${j.id}"${smtProfile.job === j.id ? ' checked' : ''}><span class="oc"><b>${j.name}</b><small>${j.desc}</small></span></label>`
+      ).join('');
+      document.getElementById('smtEq').innerHTML = EQUIP.map((e, i) =>
+        (i ? '<span class="eq-arrow" aria-hidden="true">→</span>' : '') +
+        `<label class="eq"><input class="vh" type="checkbox" name="smtEq" value="${e.id}"${smtProfile.equip.has(e.id) ? ' checked' : ''}><span>${e.name}</span></label>`
+      ).join('');
+      const pick = (name, opts, cur, labelId) => `<div class="scale" role="radiogroup" aria-labelledby="${labelId}"><div class="pts">${opts.map(o =>
+        `<label class="pt"><input class="vh" type="radio" name="${name}" value="${o.v}"${o.v === cur ? ' checked' : ''}><span>${o.t}</span></label>`
+      ).join('')}</div></div>`;
+      document.getElementById('smtExp').innerHTML = pick('smtExp', EXP_OPTS, smtProfile.exp, 'smtExpLabel');
+      document.getElementById('smtFreq').innerHTML = pick('smtFreq', FREQ_OPTS, smtProfile.freq, 'smtFreqLabel');
+    }
+
+    function renderSmtSheet() {
+      const job = JOBS.find(j => j.id === smtProfile.job);
+      const lv = smtLevel(smtProfile);
+      const eqs = EQUIP.filter(e => smtProfile.equip.has(e.id));
+      const info = [...job.info, ...eqs.flatMap(e => e.info.map(i => `${e.name} · ${i}`))];
+      const tasks = job.scen.slice(0, lv.tasks).map(t => ({ t, ex: false }));
+      if (lv.ex) tasks.push({ t: job.ex, ex: true });
+      const basic = lv.key === 'basic';
+      const expert = lv.key === 'expert';
+      const n = (min, max) => Array.from({ length: max - min + 1 }, (_, i) => String(min + i));
+      const scaleQ = (id, text, min, max, lo, hi) =>
+        `<div class="q"><p id="${id}-l">${escapeHtml(text)}</p><div class="scale" role="radiogroup" aria-labelledby="${id}-l"><div class="pts">${
+          n(min, max).map(v => `<label class="pt"><input class="vh" type="radio" name="${id}" value="${v}"><span>${v}</span></label>`).join('')
+        }</div><div class="ends"><span>${lo}</span><span>${hi}</span></div></div></div>`;
+      const choiceQ = (id, text, opts) => `<div class="q"><p id="${id}-l">${escapeHtml(text)}</p>${scaleRadios(id, id + '-l', opts)}</div>`;
+      const count = job.tasks.length + tasks.length * 2 + info.length + 2 + 2 + (expert ? 1 : 0);
+
+      document.getElementById('smtSheet').innerHTML = `
+        <div class="level-banner" aria-live="polite">
+          <div class="lv"><small>평가 수준</small><b>${lv.name}</b></div>
+          <div class="meta">
+            <span>직무 <strong>${job.name}</strong></span>
+            <span>담당 장비 <strong>${eqs.length ? eqs.map(e => e.name).join(', ') : '선택 안 함'}</strong></span>
+            <span>과제 <strong>${tasks.length}</strong>개</span>
+            <span>문항 <strong>${count}</strong>개</span>
+            <span>예상 소요 <strong>${lv.min}</strong>분</span>
+          </div>
+          <p class="rule">수준 판정: 경력 1년 미만이거나 처음 사용하면 입문, 경력 5년 이상이면서 주 1회 이상 쓰면 전문, 그 밖에는 숙련입니다. 전문 수준에는 예외 상황 과제가 하나 더 붙습니다.</p>
+        </div>
+
+        <div class="card fade-in">
+          <div class="card-header"><span class="part-no">A</span>업무 적합성<span class="part-desc">이 화면으로 아래 업무를 할 수 있나요?</span></div>
+          <div class="card-body"><div class="qs">${job.tasks.map((t, i) => scaleQ(`smtFit-${i}`, t, 1, 5, '전혀 할 수 없음', '충분히 할 수 있음')).join('')}</div></div>
+        </div>
+
+        <div class="card fade-in">
+          <div class="card-header"><span class="part-no">B</span>과제 수행<span class="part-desc">화면을 직접 써 보며 진행합니다</span></div>
+          <div class="card-body">
+            ${basic ? '<p class="hint">모르는 용어나 버튼이 있으면 진행자에게 물어봐도 됩니다. 물어봤다면 결과에서 \'도움 받고 성공\'을 고르세요.</p>' : ''}
+            ${tasks.map((t, i) => `<div class="task">
+              <div><span class="task-no">과제 ${i + 1}</span>${t.ex ? '<span class="ex-tag">예외 상황</span>' : ''}</div>
+              <p class="task-text">${escapeHtml(t.t)}</p>
+              <div class="qs">
+                ${choiceQ(`smtTask-${i}-r`, '결과', ['혼자 성공', '도움 받고 성공', '실패'])}
+                ${scaleQ(`smtTask-${i}-seq`, '이 과제는 얼마나 쉬웠나요?', 1, 7, '매우 어려움', '매우 쉬움')}
+              </div>
+              <div><label class="form-label" for="smtTask-${i}-memo">막힌 지점</label><input type="text" class="input input-sm" id="smtTask-${i}-memo" placeholder="어디서 멈췄거나 헷갈렸나요?"></div>
+            </div>`).join('')}
+          </div>
+        </div>
+
+        <div class="card fade-in">
+          <div class="card-header"><span class="part-no">C</span>정보 확인<span class="part-desc">업무에 필요한 정보를 이 화면에서 찾을 수 있나요?</span></div>
+          <div class="card-body"><div class="qs">${info.map((t, i) => choiceQ(`smtInfo-${i}`, t, ['바로 찾음', '찾기 어려움', '없음'])).join('')}</div></div>
+        </div>
+
+        <div class="card fade-in">
+          <div class="card-header"><span class="part-no">D</span>용어와 표기</div>
+          <div class="card-body">
+            <div class="qs">
+              ${scaleQ('smtTerm-1', '화면의 용어가 현장에서 쓰는 말과 같나요?', 1, 5, '전혀 다름', '완전히 같음')}
+              ${scaleQ('smtTerm-2', '단위와 숫자 표기(μm, %, PPM)를 바로 이해할 수 있나요?', 1, 5, '전혀 이해 안 됨', '바로 이해됨')}
+            </div>
+            ${basic ? '<div class="mt-12"><label class="form-label" for="smtTermUnknown">모르는 용어가 있었다면 적어 주세요</label><input type="text" class="input input-sm" id="smtTermUnknown" placeholder="예: Fiducial, Cpk"></div>' : ''}
+          </div>
+        </div>
+
+        <div class="card fade-in">
+          <div class="card-header"><span class="part-no">E</span>종합<span class="part-desc">UMUX-Lite 2문항${expert ? ' + 비교 1문항' : ''}</span></div>
+          <div class="card-body">
+            <div class="qs">
+              ${scaleQ('smtUmux-1', '이 화면은 내 업무에 필요한 기능을 갖추고 있다.', 1, 7, '전혀 아니다', '매우 그렇다')}
+              ${scaleQ('smtUmux-2', '이 화면은 사용하기 쉽다.', 1, 7, '전혀 아니다', '매우 그렇다')}
+              ${expert ? scaleQ('smtCmp', '지금 쓰는 SW보다 이 화면으로 더 빨리 처리할 수 있다.', 1, 7, '전혀 아니다', '매우 그렇다') : ''}
+            </div>
+            <div class="mt-12"><label class="form-label" for="smtComment">${expert ? '빠진 기능이나 바꾸고 싶은 점' : '자유 의견'}</label><textarea class="textarea" id="smtComment" rows="3" placeholder="현장에서 쓰기에 불편했던 점을 적어 주세요."></textarea></div>
+          </div>
+        </div>`;
+    }
+
+    // ── 평가자 유형 탭 (#ux, #smt) ──
+    const MODES = ['ux', 'smt'];
+    const MODE_HELP = {
+      ux: '원칙 기준으로 이슈를 찾고 심각도를 매깁니다.',
+      smt: '현장 직무 담당자가 담당 업무를 기준으로 화면을 써 보고 평가합니다.',
+    };
+    function showMode(mode) {
+      if (!MODES.includes(mode)) mode = 'ux';
+      MODES.forEach(m => {
+        document.getElementById('panel-' + m).hidden = m !== mode;
+        const tab = document.getElementById('tab-' + m);
+        tab.setAttribute('aria-selected', String(m === mode));
+        tab.tabIndex = m === mode ? 0 : -1;
+      });
+      document.getElementById('mode-help').textContent = MODE_HELP[mode];
+    }
+
+    function setupModesAndProfiles() {
+      document.querySelectorAll('.mode-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const m = btn.id.slice(4);
+          if (location.hash !== '#' + m) location.hash = m; else showMode(m);
+        });
+        btn.addEventListener('keydown', e => {
+          if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+          const next = MODES[(MODES.indexOf(btn.id.slice(4)) + 1) % MODES.length];
+          document.getElementById('tab-' + next).focus();
+          document.getElementById('tab-' + next).click();
+        });
+      });
+      window.addEventListener('hashchange', () => showMode(location.hash.slice(1)));
+
+      document.getElementById('uxJobs').addEventListener('click', e => {
+        const chip = e.target.closest('.chip');
+        if (!chip) return;
+        const id = chip.dataset.job;
+        if (uxJobs.has(id)) uxJobs.delete(id); else uxJobs.add(id);
+        chip.setAttribute('aria-pressed', String(uxJobs.has(id)));
+        renderUxFit();
+      });
+
+      document.getElementById('panel-smt').addEventListener('change', e => {
+        const t = e.target;
+        if (t.name === 'smtJob') smtProfile.job = t.value;
+        else if (t.name === 'smtEq') { if (t.checked) smtProfile.equip.add(t.value); else smtProfile.equip.delete(t.value); }
+        else if (t.name === 'smtExp') smtProfile.exp = t.value;
+        else if (t.name === 'smtFreq') smtProfile.freq = t.value;
+        else return;
+        renderSmtSheet();
+      });
     }
 
     // ── Evaluation Target ──
@@ -1006,11 +1482,13 @@
           projectLabel: document.getElementById('projectLabel').value,
           targetUrl: document.getElementById('targetUrl').value.trim(),
           targetImages: [...targetImages],
+          expectedJobs: [...uxJobs],
           issues: issues.map(x => ({
             hIdx: x.hIdx,
             description: x.description,
             severity: x.severity,
             location: x.location,
+            checkKey: x.checkKey,
           })),
         });
       } catch (e) {
@@ -1043,13 +1521,21 @@
           description: x.description,
           severity: x.severity,
           location: x.location || '',
+          checkKey: x.checkKey,
         }));
       } else {
         issues = [];
       }
 
+      applyExpectedJobs(data.expectedJobs);
       renderHeuristics();
       updateAnalysis();
+    }
+
+    function applyExpectedJobs(list) {
+      uxJobs = new Set(Array.isArray(list) ? list : []);
+      renderUxJobs();
+      renderUxFit();
     }
 
     function deleteTemplateData() {
@@ -1066,6 +1552,13 @@
     setRadarMode('max');
     refreshTemplateList();
     setupTargetUpload();
+    renderUxJobs();
+    renderUxFit();
+    renderUxField();
+    renderSmtProfile();
+    renderSmtSheet();
+    setupModesAndProfiles();
+    showMode(location.hash.slice(1));
   </script>
 </body>
 </html>
