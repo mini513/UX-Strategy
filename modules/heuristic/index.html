@@ -269,6 +269,10 @@
     .eq input:checked + span { border-color: var(--primary); background: var(--primary-light); color: var(--primary); font-weight: 600; }
     .eq input:focus-visible + span { outline: 2px solid var(--primary); outline-offset: 2px; }
     .eq-arrow { color: var(--text-muted); font-size: 13px; }
+    /* 담당 장비 옆에 자리가 없으면 담당 솔루션이 통째로 다음 줄로 내려간다 */
+    .profile-row { display: flex; flex-wrap: wrap; column-gap: 28px; }
+    .profile-row > .form-group { flex: 0 0 auto; max-width: 100%; min-width: 0; }
+    .eq.sol span { font-family: var(--font); padding: 6px 10px; }
     .level-banner { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; padding: 16px 20px; margin-bottom: 20px; border-radius: var(--radius); background: var(--primary-light); border: 1px solid var(--primary); }
     .level-banner .lv { display: flex; flex-direction: column; }
     .level-banner .lv small { font-size: 12px; color: var(--text-secondary); }
@@ -462,7 +466,7 @@
 
     <div id="panel-smt" role="tabpanel" aria-labelledby="tab-smt" hidden>
       <div class="card fade-in">
-        <div class="card-header"><span class="part-no">1단계</span>평가자 프로필<span class="part-desc">4문항 · 1분</span></div>
+        <div class="card-header"><span class="part-no">1단계</span>평가자 프로필<span class="part-desc">5문항 · 1분</span></div>
         <div class="card-body">
           <div class="form-group">
             <label class="form-label" for="smtTarget">평가 대상 화면</label>
@@ -472,9 +476,15 @@
             <span class="form-label" id="smtJobLabel">직무</span>
             <div class="jobgrid" id="smtJob" role="radiogroup" aria-labelledby="smtJobLabel"></div>
           </div>
-          <div class="form-group">
-            <span class="form-label" id="smtEqLabel">담당 장비 (라인 순서 · 여러 개 선택)</span>
-            <div class="eqline" id="smtEq" role="group" aria-labelledby="smtEqLabel"></div>
+          <div class="profile-row">
+            <div class="form-group">
+              <span class="form-label" id="smtEqLabel">담당 장비 (라인 순서 · 여러 개 선택)</span>
+              <div class="eqline" id="smtEq" role="group" aria-labelledby="smtEqLabel"></div>
+            </div>
+            <div class="form-group">
+              <span class="form-label" id="smtSolLabel">담당 솔루션 (여러 개 선택)</span>
+              <div class="eqline" id="smtSol" role="group" aria-labelledby="smtSolLabel"></div>
+            </div>
           </div>
           <div class="grid grid-2" style="gap:16px;">
             <div><span class="form-label" id="smtExpLabel">SMT 경력</span><div id="smtExp"></div></div>
@@ -620,6 +630,14 @@
       { id: 'review', name: 'Review Station', info: ['최종 판정 결과', 'AI 판정 비율'] },
     ];
 
+    // 담당 솔루션: 고른 솔루션의 결과와 상태를 이 화면에서 확인할 수 있는지 '정보 확인' 문항에 붙인다
+    const SOLUTIONS = [
+      { id: 'kap', name: 'KAP' },
+      { id: 'sr', name: 'Smart Review' },
+      { id: 'kpo', name: 'KPO Solution' },
+      { id: 'jg', name: 'JOB Guarantee' },
+    ];
+
     const FIELD_CHECKS = [
       '장비 앞 1~2m 거리에서도 핵심 수치와 상태를 읽을 수 있다',
       'NG·OK를 색만이 아니라 아이콘이나 글자로도 구분한다',
@@ -639,7 +657,7 @@
     let targetImages = []; // 평가 대상 화면 캡처 (JPEG data URL)
     const TARGET_MAX_WIDTH = 1600;
     let uxJobs = new Set(); // 이 화면을 주로 사용할 것으로 예상되는 직무
-    const smtProfile = { job: 'op', equip: new Set(), exp: '1to3', freq: 'week' };
+    const smtProfile = { job: 'op', equip: new Set(), solutions: new Set(), exp: '1to3', freq: 'week' };
 
     // ── Toggle ──
     function toggleSection(el) {
@@ -1204,6 +1222,9 @@
         (i ? '<span class="eq-arrow" aria-hidden="true">→</span>' : '') +
         `<label class="eq"><input class="vh" type="checkbox" name="smtEq" value="${e.id}"${smtProfile.equip.has(e.id) ? ' checked' : ''}><span>${e.name}</span></label>`
       ).join('');
+      document.getElementById('smtSol').innerHTML = SOLUTIONS.map(s =>
+        `<label class="eq sol"><input class="vh" type="checkbox" name="smtSol" value="${s.id}"${smtProfile.solutions.has(s.id) ? ' checked' : ''}><span>${s.name}</span></label>`
+      ).join('');
       const pick = (name, opts, cur, labelId) => `<div class="scale" role="radiogroup" aria-labelledby="${labelId}"><div class="pts">${opts.map(o =>
         `<label class="pt"><input class="vh" type="radio" name="${name}" value="${o.v}"${o.v === cur ? ' checked' : ''}><span>${o.t}</span></label>`
       ).join('')}</div></div>`;
@@ -1215,7 +1236,12 @@
       const job = JOBS.find(j => j.id === smtProfile.job);
       const lv = smtLevel(smtProfile);
       const eqs = EQUIP.filter(e => smtProfile.equip.has(e.id));
-      const info = [...job.info, ...eqs.flatMap(e => e.info.map(i => `${e.name} · ${i}`))];
+      const sols = SOLUTIONS.filter(s => smtProfile.solutions.has(s.id));
+      const info = [
+        ...job.info,
+        ...eqs.flatMap(e => e.info.map(i => `${e.name} · ${i}`)),
+        ...sols.map(s => `${s.name} · 결과와 상태`),
+      ];
       const tasks = job.scen.slice(0, lv.tasks).map(t => ({ t, ex: false }));
       if (lv.ex) tasks.push({ t: job.ex, ex: true });
       const basic = lv.key === 'basic';
@@ -1234,6 +1260,7 @@
           <div class="meta">
             <span>직무 <strong>${job.name}</strong></span>
             <span>담당 장비 <strong>${eqs.length ? eqs.map(e => e.name).join(', ') : '선택 안 함'}</strong></span>
+            <span>담당 솔루션 <strong>${sols.length ? sols.map(s => s.name).join(', ') : '선택 안 함'}</strong></span>
             <span>과제 <strong>${tasks.length}</strong>개</span>
             <span>문항 <strong>${count}</strong>개</span>
             <span>예상 소요 <strong>${lv.min}</strong>분</span>
@@ -1336,6 +1363,7 @@
         const t = e.target;
         if (t.name === 'smtJob') smtProfile.job = t.value;
         else if (t.name === 'smtEq') { if (t.checked) smtProfile.equip.add(t.value); else smtProfile.equip.delete(t.value); }
+        else if (t.name === 'smtSol') { if (t.checked) smtProfile.solutions.add(t.value); else smtProfile.solutions.delete(t.value); }
         else if (t.name === 'smtExp') smtProfile.exp = t.value;
         else if (t.name === 'smtFreq') smtProfile.freq = t.value;
         else return;
