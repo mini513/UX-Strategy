@@ -226,6 +226,27 @@
     @media (prefers-reduced-motion: reduce) { .collapsible-toggle .arrow { transition: none; } }
     .draft-status { font-size: 12px; font-weight: 400; color: var(--text-muted); }
     .draft-status.warn { color: var(--danger); }
+    /* ── AI 휴리스틱 평가표 ── */
+    .ai-settings { padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--bg); }
+    .ai-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+    .ai-status-err { color: var(--danger); }
+    .ai-block { margin-top: 20px; }
+    .ai-block-title { font-size: 14px; font-weight: 600; margin: 0 0 8px; }
+    .ai-summary { background: var(--bg); border-radius: var(--radius-sm); padding: 14px 16px; font-size: 14px; line-height: 1.7; }
+    .ai-summary p { margin: 0; }
+    .ai-summary p + p { margin-top: 4px; }
+    .ai-summary b { color: var(--text-secondary); font-weight: 600; margin-right: 6px; }
+    .ai-item { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+    .ai-item + .ai-item { margin-top: 8px; }
+    .ai-item-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+    .ai-tag { font-family: var(--mono); font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--primary-light); color: var(--primary); white-space: nowrap; }
+    .ai-where { font-size: 12px; color: var(--text-muted); }
+    .ai-text { font-size: 14px; line-height: 1.6; margin: 0; }
+    .ai-why { font-size: 12px; color: var(--text-muted); margin: 0; }
+    .ai-answer { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; align-items: center; }
+    @media (max-width: 640px) { .ai-answer { grid-template-columns: 1fr; } }
+    .ai-gaps { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.7; }
+    .ai-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-top: 16px; font-size: 12px; color: var(--text-muted); }
     .confirm-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 12px 20px; background: var(--danger-light); border-bottom: 1px solid var(--border); font-size: 14px; }
     .part-desc { font-size: 13px; font-weight: 400; color: var(--text-muted); margin-left: 8px; }
     .vh { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
@@ -376,6 +397,41 @@
     </div>
 
     <!-- 10 Heuristics -->
+    <!-- AI 휴리스틱 평가표 -->
+    <div class="card fade-in" id="aiCard">
+      <div class="card-header flex-between">
+        <span><span class="part-no">AI</span>AI 휴리스틱 평가표<span class="part-desc">캡처를 분석해 이 화면에 맞는 관찰과 질문을 만듭니다</span></span>
+        <button type="button" class="btn btn-sm btn-ghost" id="aiSettingsToggle" aria-expanded="false" aria-controls="aiSettings">AI 설정</button>
+      </div>
+      <div class="ai-settings" id="aiSettings" hidden>
+        <div class="grid grid-2" style="gap:12px;">
+          <div>
+            <label class="form-label" for="aiBaseUrl">API 주소</label>
+            <input type="url" class="input input-sm" id="aiBaseUrl" placeholder="https://llm.kohyoung.com">
+          </div>
+          <div>
+            <label class="form-label" for="aiModel">모델</label>
+            <input type="text" class="input input-sm" id="aiModel" placeholder="claude-opus-5">
+          </div>
+        </div>
+        <div class="mt-12">
+          <label class="form-label" for="aiToken">인증 토큰</label>
+          <div class="target-row">
+            <input type="password" class="input input-sm" id="aiToken" autocomplete="off" placeholder="회사에서 발급받은 AI 토큰">
+            <button type="button" class="btn btn-sm" id="aiSettingsSave">저장</button>
+          </div>
+          <p class="help mt-8">토큰은 이 브라우저에만 저장되고 코드나 GitHub에는 올라가지 않습니다. 캡처 이미지는 위 API 주소로 전송됩니다.</p>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="ai-actions">
+          <button type="button" class="btn btn-primary" id="aiGenerateBtn">AI 휴리스틱 평가표 생성</button>
+          <span class="help" id="aiStatus" role="status" aria-live="polite">평가 정보에 화면 캡처를 넣은 뒤 눌러 주세요.</span>
+        </div>
+        <div id="aiResult"></div>
+      </div>
+    </div>
+
     <h2 class="section-title fade-in"><span class="part-no">A</span>휴리스틱 10원칙<span class="part-desc">원칙을 펼쳐 SMT 점검 항목을 체크하고, 그 밖의 이슈를 추가하세요</span></h2>
     <div id="heuristicsArea" class="fade-in"></div>
 
@@ -498,6 +554,7 @@
   </main>
 
   <script src="../../shared/storage.js"></script>
+  <script type="module" src="ai-eval.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script>
     // ── Heuristic Data ──
@@ -656,6 +713,8 @@
     let tableSortAsc = true;
     let targetImages = []; // 평가 대상 화면 캡처 (JPEG data URL)
     const TARGET_MAX_WIDTH = 1600;
+    // let 변수는 window에 붙지 않아서, 별도 모듈(ai-eval.js)이 캡처를 읽을 수 있게 함수로 내보낸다
+    function getTargetImages() { return [...targetImages]; }
     let uxJobs = new Set(); // 이 화면을 주로 사용할 것으로 예상되는 직무
     const smtProfile = { job: 'op', equip: new Set(), solutions: new Set(), exp: '1to3', freq: 'week' };
 
