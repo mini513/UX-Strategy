@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "UX 평가 캡처",
+  "version": "0.1.0",
+  "description": "지금 보고 있는 화면을 캡처해 UX Strategy Toolkit 휴리스틱 평가로 보냅니다.",
+  "action": {
+    "default_title": "UX 평가 캡처",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": ["https://mini513.github.io/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://mini513.github.io/UX-Strategy/modules/heuristic/*"],
+      "js": ["receiver.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "capture-and-send": {
+      "suggested_key": { "default": "Alt+Shift+S" },
+      "description": "현재 화면을 캡처해 휴리스틱 평가로 보내기"
+    }
+  }
+}

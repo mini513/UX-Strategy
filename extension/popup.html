@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>UX 평가 캡처</title>
+  <style>
+    :root {
+      --bg: #FFFFFF; --fg: #1E293B; --muted: #64748B; --line: #E2E8F0;
+      --primary: #4F46E5; --primary-fg: #FFFFFF; --soft: #EEF2FF;
+      --ok: #047857; --err: #B91C1C;
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111827; --fg: #E5E7EB; --muted: #9CA3AF; --line: #374151;
+        --primary: #818CF8; --primary-fg: #111827; --soft: #1E1B4B;
+        --ok: #34D399; --err: #F87171;
+        color-scheme: dark;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; width: 320px; padding: 16px; background: var(--bg); color: var(--fg); font: 14px/1.5 'Pretendard', system-ui, sans-serif; display: flex; flex-direction: column; gap: 12px; }
+    h1 { margin: 0; font-size: 15px; }
+    .page { padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
+    .page b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .page span { display: block; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    button { font: inherit; border-radius: 8px; cursor: pointer; padding: 10px 12px; }
+    .primary { border: 0; background: var(--primary); color: var(--primary-fg); font-weight: 600; }
+    .primary:disabled { opacity: .6; cursor: progress; }
+    .ghost { border: 1px solid var(--line); background: transparent; color: var(--fg); }
+    button:focus-visible, input:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    label { display: flex; gap: 8px; align-items: center; font-size: 13px; cursor: pointer; }
+    #status { margin: 0; min-height: 1.5em; font-size: 13px; }
+    #status.ok { color: var(--ok); }
+    #status.err { color: var(--err); }
+    .foot { margin: 0; font-size: 12px; color: var(--muted); }
+    kbd { font: 12px ui-monospace, Consolas, monospace; padding: 1px 5px; border: 1px solid var(--line); border-radius: 4px; background: var(--soft); }
+  </style>
+</head>
+<body>
+  <h1>UX 평가 캡처</h1>
+  <div class="page" aria-label="캡처할 화면">
+    <b id="pageTitle">현재 화면</b>
+    <span id="pageUrl"></span>
+  </div>
+  <button class="primary" id="captureBtn">캡처해서 휴리스틱 평가로 보내기</button>
+  <label for="focusAfter"><input type="checkbox" id="focusAfter"> 보낸 뒤 평가 화면으로 이동</label>
+  <p id="status" role="status"></p>
+  <button class="ghost" id="openBtn">휴리스틱 평가 열기</button>
+  <p class="foot">단축키 <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> · 보이는 영역만 캡처합니다</p>
+  <script src="popup.js"></script>
+</body>
+</html>
