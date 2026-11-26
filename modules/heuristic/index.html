@@ -151,7 +151,17 @@
     }
     .target-row { display: flex; gap: 8px; }
     .target-row .input { flex: 1; }
-    .target-upload { padding: 20px; }
+    .target-upload { padding: 20px; cursor: default; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .target-upload:hover { border-color: var(--border); background: transparent; color: var(--text-muted); }
+    .target-upload:focus { outline: none; }
+    .target-upload:focus, .target-upload.dragover { border-color: var(--primary); border-style: solid; background: var(--primary-light); color: var(--primary); }
+    .target-upload .key { padding: 1px 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-size: 12px; font-family: var(--mono); color: var(--text-secondary); }
+    .paste-ready { display: none; font-size: 13px; font-weight: 600; color: var(--primary); }
+    .target-upload:focus .paste-ready { display: block; }
+    .target-upload:focus #targetPasteHint { display: none; }
+    .file-pick { font: inherit; font-size: 13px; font-weight: 500; color: var(--primary); background: var(--surface); border: 1px dashed var(--primary); border-radius: var(--radius-sm); padding: 10px 20px; cursor: pointer; }
+    .file-pick:hover { background: var(--primary-light); border-style: solid; }
+    .file-pick:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
     .target-images {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -331,12 +341,10 @@
         </div>
         <div class="form-group" style="margin-bottom:0;">
           <label class="form-label">평가 대상 화면 캡처</label>
-          <div class="upload-zone target-upload" id="targetUploadZone">
-            <div class="upload-zone-text">이미지를 드래그하거나 클릭하여 추가 (여러 장 가능)</div>
-            <div style="margin-top:8px; display:inline-flex; align-items:center; gap:6px; padding:4px 12px; background:#F1F5F9; border-radius:6px; font-size:13px; color:#64748B;">
-              <kbd style="padding:2px 6px; background:#fff; border:1px solid #E2E8F0; border-radius:4px; font-size:12px; font-family:var(--mono);">Ctrl</kbd>+<kbd style="padding:2px 6px; background:#fff; border:1px solid #E2E8F0; border-radius:4px; font-size:12px; font-family:var(--mono);">V</kbd>
-              <span>클립보드 붙여넣기</span>
-            </div>
+          <div class="upload-zone target-upload" id="targetUploadZone" tabindex="0" role="group" aria-label="평가 대상 화면 캡처 붙여넣기 영역" aria-describedby="targetPasteHint">
+            <div class="upload-zone-text" id="targetPasteHint">이 영역을 누르고 <kbd class="key">Ctrl</kbd>+<kbd class="key">V</kbd>로 붙여넣거나, 이미지를 끌어다 놓으세요</div>
+            <div class="paste-ready" aria-hidden="true">붙여넣기 준비됨 · <kbd class="key">Ctrl</kbd>+<kbd class="key">V</kbd></div>
+            <button type="button" class="file-pick" id="targetFilePick">파일에서 선택 (여러 장 가능)</button>
           </div>
           <input type="file" id="targetFileInput" accept="image/*" multiple class="hidden">
           <div class="target-images" id="targetImages"></div>
@@ -1410,7 +1418,15 @@
     function setupTargetUpload() {
       const zone = document.getElementById('targetUploadZone');
       const input = document.getElementById('targetFileInput');
-      zone.addEventListener('click', () => input.click());
+      // 바깥 영역은 선택만 되게 해서 바로 Ctrl+V로 붙여넣을 수 있게 하고, 파일 창은 안쪽 버튼에서만 연다
+      zone.addEventListener('click', (e) => {
+        if (e.target.closest('#targetFilePick')) return;
+        zone.focus();
+      });
+      document.getElementById('targetFilePick').addEventListener('click', (e) => {
+        e.stopPropagation();
+        input.click();
+      });
       zone.addEventListener('dragover', (e) => {
         e.preventDefault();
         zone.classList.add('dragover');
